@@ -1,10 +1,11 @@
 import { Link, useLocation } from "wouter";
-import { Home, Ticket, User } from "lucide-react";
+import { Home, Ticket, User, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const tabs = [
   { href: "/", label: "Home", icon: Home },
   { href: "/tickets", label: "Tickets", icon: Ticket },
+  { href: "/chat", label: "Chat", icon: MessageCircle },
   { href: "/profile", label: "Profile", icon: User },
 ];
 
@@ -22,8 +23,8 @@ export function BottomNav() {
         <div className="relative flex justify-around items-center h-16 px-4">
           {/* Sliding pill indicator */}
           <div
-            className="absolute top-2 h-11 w-[30%] rounded-2xl bg-primary/10 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] pointer-events-none"
-            style={{ left: `${activeIndex * 33.333 + 1.7}%` }}
+            className="absolute top-2 h-11 w-[22%] rounded-2xl bg-primary/10 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] pointer-events-none"
+            style={{ left: `${activeIndex * 25 + 1.5}%` }}
           />
 
           {tabs.map(({ href, label, icon: Icon }, i) => {
@@ -32,7 +33,7 @@ export function BottomNav() {
               <Link
                 key={href}
                 href={href}
-                className="relative flex flex-col items-center justify-center w-[33%] gap-1 transition-all duration-200"
+                className="relative flex flex-col items-center justify-center w-[25%] gap-1 transition-all duration-200"
               >
                 <Icon
                   className={cn(

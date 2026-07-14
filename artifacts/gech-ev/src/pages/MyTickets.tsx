@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useListTickets, useGetTicketStats } from "@workspace/api-client-react";
 import { Search, Ticket as TicketIcon, Clock, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import bydImage from "@/assets/byd-yuan-up.jpg";
+import glogoSrc from "@/assets/glogo.jpg";
 import activeStatIcon from "@/assets/icons/stat-active.svg";
 import pendingStatIcon from "@/assets/icons/stat-pending.svg";
 import totalStatIcon from "@/assets/icons/stat-total.svg";
@@ -36,6 +37,12 @@ export function MyTickets() {
     <div className="flex flex-col flex-1 pb-safe">
       {/* Header */}
       <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/40 px-4 pt-10 pb-4">
+        <div className="flex items-center gap-2.5 mb-4">
+          <img src={glogoSrc} alt="Gech Ekub Logo" className="w-9 h-9 rounded-xl object-cover shadow-sm" />
+          <span style={{ fontFamily: "'Hegiena', sans-serif" }} className="text-xl leading-tight tracking-tight">
+            Gech Ekub
+          </span>
+        </div>
         <h1 className="text-2xl font-extrabold mb-0.5">My Tickets</h1>
         <p className="text-sm text-muted-foreground mb-4">Track your lottery entries</p>
 
@@ -256,7 +263,7 @@ function AnimatedStatCard({
       />
       <div className="flex flex-col items-end justify-center">
         <span className={cn("text-2xl font-black leading-none", valueClass)}>{animated}</span>
-        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mt-1">
+        <span className="text-[10px] font-bold text-black uppercase tracking-wider mt-1">
           {label}
         </span>
       </div>

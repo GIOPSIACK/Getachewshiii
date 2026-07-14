@@ -8,6 +8,8 @@ import { Checkout } from './pages/Checkout';
 import { Success } from './pages/Success';
 import { MyTickets } from './pages/MyTickets';
 import { Profile } from './pages/Profile';
+import { Chat } from './pages/Chat';
+import { Leaderboard } from './pages/Leaderboard';
 import { AdminPanel } from './pages/Admin';
 import NotFound from '@/pages/not-found';
 import { AppLayout } from './components/layout/AppLayout';
@@ -25,6 +27,8 @@ function Router() {
         <Route path="/success" component={Success} />
         <Route path="/tickets" component={MyTickets} />
         <Route path="/profile" component={Profile} />
+        <Route path="/chat" component={Chat} />
+        <Route path="/leaderboard" component={Leaderboard} />
         <Route path="/admin" component={AdminPanel} />
         <Route component={NotFound} />
       </Switch>

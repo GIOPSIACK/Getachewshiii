@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Phone, Trophy } from "lucide-react";
+import { Phone } from "lucide-react";
+import glogoSrc from "@/assets/glogo.jpg";
 
 export function Profile() {
   const [savedPhone, setSavedPhone] = useState<string>("");
@@ -13,14 +14,11 @@ export function Profile() {
     <div className="flex flex-col flex-1 min-h-[100dvh]">
       {/* Header */}
       <div className="px-6 pt-12 pb-4 flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <Trophy className="w-5 h-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-lg font-extrabold tracking-tight text-foreground">Gech EV</h1>
-            <p className="text-xs font-medium text-muted-foreground">Makina Ekub</p>
-          </div>
+        <div className="flex items-center gap-2.5">
+          <img src={glogoSrc} alt="Gech Ekub Logo" className="w-9 h-9 rounded-xl object-cover shadow-sm" />
+          <span style={{ fontFamily: "'Hegiena', sans-serif" }} className="text-xl leading-tight tracking-tight">
+            Gech Ekub
+          </span>
         </div>
       </div>
 

@@ -81,9 +81,13 @@ export function Home() {
             Gech Ekub
           </span>
         </div>
-        <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shadow-sm">
+        <Link
+          href="/leaderboard"
+          className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shadow-sm active:scale-90 transition-transform"
+          aria-label="View leaderboard"
+        >
           <Trophy className="w-4.5 h-4.5 text-primary" />
-        </div>
+        </Link>
       </div>
 
       {isLoading ? (
@@ -161,7 +165,7 @@ export function Home() {
                         />
                         <span className="relative z-10 pl-8 text-black">{campaign.soldSlots} sold</span>
                       </span>
-                      <span className="text-primary font-bold">{percentFilled}% filled</span>
+                      <span className="text-black font-bold">{percentFilled}% filled</span>
                     </div>
                     <div className="h-5 w-full bg-muted rounded-full overflow-visible relative">
                       <div
@@ -171,13 +175,13 @@ export function Home() {
                         {/* Shimmer gleam */}
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[shimmer_2s_infinite]" />
                       </div>
-                      {/* Tip marker showing sold-ticket momentum at the head of the bar */}
+                      {/* Tip marker showing sold-ticket momentum, sitting just outside the tip of the bar */}
                       <img
                         src={goTipIcon}
                         alt=""
                         aria-hidden="true"
                         className="absolute h-5 w-5 drop-shadow-md pointer-events-none select-none"
-                        style={{ left: `${percentFilled}%`, top: "50%", transform: "translate(-50%, -50%)" }}
+                        style={{ left: `${percentFilled}%`, top: "50%", transform: "translate(0, -50%)" }}
                       />
                     </div>
                     <p className="text-[11px] text-black mt-1.5 font-medium">
@@ -223,7 +227,7 @@ export function Home() {
                         src={ticketIcon}
                         alt=""
                         aria-hidden="true"
-                        className="absolute bottom-1.5 right-2 h-4 w-4 pointer-events-none select-none"
+                        className="absolute bottom-0.5 right-1 h-8 w-8 pointer-events-none select-none"
                       />
                     </Link>
                   </div>
@@ -269,7 +273,7 @@ export function Home() {
           </div>
 
           {/* Active Lotteries */}
-          <div className="px-4 mb-28">
+          <div className="px-4 mb-2">
             <div className="flex justify-between items-center mb-3">
               <div className="flex items-center gap-2">
                 <img src={activeLotteriesIcon} alt="" aria-hidden="true" className="h-12 w-12 shrink-0" />
