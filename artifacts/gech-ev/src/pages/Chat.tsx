@@ -10,8 +10,26 @@ interface ChatMsg {
 const WELCOME: ChatMsg = {
   role: "assistant",
   content:
-    "Hi! I'm the Gech Ekub assistant. Ask me how the lottery works, how to buy a ticket, or how to check your ticket status.",
+    "Hi! I'm the Gech Ekub assistant. Tap a question below, or type your own.",
 };
+
+const SUGGESTIONS: { question: string; answer: string }[] = [
+  {
+    question: "How does the lottery work?",
+    answer:
+      "Gech Ekub runs EV lotteries (\"Ekub\" draws). Each campaign has a limited number of ticket slots — when you buy a ticket, you pick lucky numbers and enter the draw for that vehicle. Winners are picked on the campaign's draw date, shown by the countdown on the Home page.",
+  },
+  {
+    question: "How do I buy a ticket?",
+    answer:
+      "On the Home page, tap \"Buy Ticket\" on a featured campaign (or open one from Active Lotteries). Choose your quantity and lucky numbers, then pay via Telebirr or CBE and upload your payment receipt to complete the purchase.",
+  },
+  {
+    question: "How do I check my ticket status?",
+    answer:
+      "Go to the Tickets tab and enter your phone number, then tap Search. You'll see your Active, Pending, and Total ticket counts, plus each ticket's status. New tickets stay \"Pending\" until an admin verifies your payment.",
+  },
+];
 
 export function Chat() {
   const [messages, setMessages] = useState<ChatMsg[]>([WELCOME]);
@@ -27,6 +45,11 @@ export function Chat() {
     }
     scrollRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [messages, isStreaming]);
+
+  const askSuggestion = (question: string, answer: string) => {
+    if (isStreaming) return;
+    setMessages((prev) => [...prev, { role: "user", content: question }, { role: "assistant", content: answer }]);
+  };
 
   const sendMessage = async () => {
     const text = input.trim();
@@ -144,6 +167,21 @@ export function Chat() {
             )}
           </div>
         ))}
+
+        {/* Suggested questions */}
+        <div className="flex flex-col gap-2 mt-1">
+          {SUGGESTIONS.map((s) => (
+            <button
+              key={s.question}
+              onClick={() => askSuggestion(s.question, s.answer)}
+              disabled={isStreaming}
+              className="self-start text-left text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/15 border border-primary/20 rounded-2xl px-3.5 py-2 transition-colors disabled:opacity-50"
+            >
+              {s.question}
+            </button>
+          ))}
+        </div>
+
         <div ref={scrollRef} />
       </div>
 
