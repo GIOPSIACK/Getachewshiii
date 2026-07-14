@@ -1,0 +1,445 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: Gech EV Makina Ekub API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: campaigns
+    description: EV raffle campaigns
+  - name: tickets
+    description: Raffle ticket purchases
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /campaigns:
+    get:
+      operationId: listCampaigns
+      tags: [campaigns]
+      summary: List all active campaigns
+      responses:
+        "200":
+          description: List of campaigns
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Campaign"
+
+  /campaigns/{id}:
+    get:
+      operationId: getCampaign
+      tags: [campaigns]
+      summary: Get a campaign by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Campaign details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /tickets:
+    get:
+      operationId: listTickets
+      tags: [tickets]
+      summary: Get tickets by phone number
+      parameters:
+        - name: phone
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Phone number to search tickets for
+      responses:
+        "200":
+          description: Tickets for the phone number
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Ticket"
+    post:
+      operationId: createTicket
+      tags: [tickets]
+      summary: Submit a ticket purchase
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TicketInput"
+      responses:
+        "201":
+          description: Ticket created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ticket"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /tickets/stats:
+    get:
+      operationId: getTicketStats
+      tags: [tickets]
+      summary: Get ticket stats for a phone number
+      parameters:
+        - name: phone
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Ticket stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TicketStats"
+
+  /tickets/{id}:
+    get:
+      operationId: getTicket
+      tags: [tickets]
+      summary: Get a ticket by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Ticket details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ticket"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /tickets/{id}/status:
+    patch:
+      operationId: updateTicketStatus
+      tags: [tickets]
+      summary: Admin - update ticket status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TicketStatusUpdate"
+      responses:
+        "200":
+          description: Updated ticket
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ticket"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /receipts/upload:
+    post:
+      operationId: uploadReceipt
+      tags: [tickets]
+      summary: Upload a payment receipt image (base64)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReceiptUpload"
+      responses:
+        "200":
+          description: Upload successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReceiptUploadResult"
+
+  /admin/tickets:
+    get:
+      operationId: adminListTickets
+      tags: [tickets]
+      summary: Admin - list all tickets with optional status filter
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pending, active, rejected]
+      responses:
+        "200":
+          description: All tickets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Ticket"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    Campaign:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: ["string", "null"]
+        vehicleModel:
+          type: string
+        vehicleYear:
+          type: integer
+        ticketPrice:
+          type: number
+          description: Price in Ethiopian Birr
+        totalSlots:
+          type: integer
+        soldSlots:
+          type: integer
+        drawDate:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [active, completed, cancelled]
+        paymentDetails:
+          $ref: "#/components/schemas/PaymentDetails"
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - description
+        - vehicleModel
+        - vehicleYear
+        - ticketPrice
+        - totalSlots
+        - soldSlots
+        - drawDate
+        - status
+        - paymentDetails
+        - createdAt
+
+    PaymentDetails:
+      type: object
+      properties:
+        telebirrNumber:
+          type: string
+        cbeAccount:
+          type: string
+        accountName:
+          type: string
+      required:
+        - telebirrNumber
+        - cbeAccount
+        - accountName
+
+    Ticket:
+      type: object
+      properties:
+        id:
+          type: integer
+        campaignId:
+          type: integer
+        ticketNumber:
+          type: string
+        buyerName:
+          type: string
+        buyerPhone:
+          type: string
+        quantity:
+          type: integer
+        luckyNumbers:
+          type: array
+          items:
+            type: integer
+        paymentMethod:
+          type: string
+          enum: [telebirr, cbe]
+        senderAccount:
+          type: string
+        receiptImageUrl:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [pending, active, rejected]
+        campaign:
+          $ref: "#/components/schemas/Campaign"
+        totalAmount:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - campaignId
+        - ticketNumber
+        - buyerName
+        - buyerPhone
+        - quantity
+        - luckyNumbers
+        - paymentMethod
+        - senderAccount
+        - status
+        - totalAmount
+        - createdAt
+
+    TicketInput:
+      type: object
+      properties:
+        campaignId:
+          type: integer
+        buyerName:
+          type: string
+          minLength: 2
+        buyerPhone:
+          type: string
+          minLength: 9
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 10
+        luckyNumbers:
+          type: array
+          items:
+            type: integer
+        paymentMethod:
+          type: string
+          enum: [telebirr, cbe]
+        senderAccount:
+          type: string
+          minLength: 5
+        receiptImageUrl:
+          type: ["string", "null"]
+      required:
+        - campaignId
+        - buyerName
+        - buyerPhone
+        - quantity
+        - luckyNumbers
+        - paymentMethod
+        - senderAccount
+
+    TicketStatusUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [active, rejected]
+      required:
+        - status
+
+    TicketStats:
+      type: object
+      properties:
+        phone:
+          type: string
+        active:
+          type: integer
+        pending:
+          type: integer
+        rejected:
+          type: integer
+        total:
+          type: integer
+      required:
+        - phone
+        - active
+        - pending
+        - rejected
+        - total
+
+    ReceiptUpload:
+      type: object
+      properties:
+        imageData:
+          type: string
+          description: Base64-encoded image data
+        mimeType:
+          type: string
+      required:
+        - imageData
+        - mimeType
+
+    ReceiptUploadResult:
+      type: object
+      properties:
+        url:
+          type: string
+      required:
+        - url
