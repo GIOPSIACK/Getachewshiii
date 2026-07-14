@@ -41,7 +41,7 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- After a fresh `pnpm install` on this environment, the `esbuild` binary in `node_modules/.pnpm` may lose its execute bit (`EACCES` when `drizzle-kit push` or the API build spawns it). Fix with `find node_modules/.pnpm -path "*@esbuild/linux-x64/bin/esbuild" -exec chmod +x {} \;`.
 
 ## Pointers
 
