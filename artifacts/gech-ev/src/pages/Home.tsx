@@ -151,38 +151,40 @@ export function Home() {
                     className="rounded-2xl p-3.5"
                     style={{ backgroundColor: "#7BC143", boxShadow: "inset 0 0 0 3px #000000" }}
                   >
-                    <div className="flex justify-between items-center text-xs font-semibold mb-2">
-                      <span className="relative flex items-center text-black">
-                        <img
-                          src={soldIcon}
-                          alt=""
-                          aria-hidden="true"
-                          className="absolute -left-1.5 top-1/2 -translate-y-1/2 h-6 w-6 opacity-20 -z-0 pointer-events-none select-none"
-                        />
-                        <span className="relative pl-5">{campaign.soldSlots} sold</span>
-                      </span>
-                      <span className="text-primary font-bold">{percentFilled}% filled</span>
-                    </div>
-                    <div className="h-2.5 w-full bg-muted rounded-full overflow-visible relative">
-                      <div
-                        className="h-full rounded-full transition-all duration-1000 ease-out relative overflow-hidden bg-black"
-                        style={{ width: `${percentFilled}%` }}
-                      >
-                        {/* Shimmer gleam */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[shimmer_2s_infinite]" />
-                      </div>
-                      {/* Tip marker showing sold-ticket momentum at the head of the bar */}
+                    <div className="flex items-center gap-3">
                       <img
-                        src={goTipIcon}
+                        src={soldIcon}
                         alt=""
                         aria-hidden="true"
-                        className="absolute top-1/2 h-4 w-4 -translate-y-1/2 drop-shadow-md pointer-events-none select-none"
-                        style={{ left: `${percentFilled}%`, transform: "translate(-50%, -50%)" }}
+                        className="h-12 w-12 shrink-0"
                       />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-center text-xs font-semibold mb-2">
+                          <span className="text-black">{campaign.soldSlots} sold</span>
+                          <span className="text-primary font-bold">{percentFilled}% filled</span>
+                        </div>
+                        <div className="h-5 w-full bg-muted rounded-full overflow-visible relative">
+                          <div
+                            className="h-full rounded-full transition-all duration-1000 ease-out relative overflow-hidden bg-black"
+                            style={{ width: `${percentFilled}%` }}
+                          >
+                            {/* Shimmer gleam */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[shimmer_2s_infinite]" />
+                          </div>
+                          {/* Tip marker showing sold-ticket momentum at the head of the bar */}
+                          <img
+                            src={goTipIcon}
+                            alt=""
+                            aria-hidden="true"
+                            className="absolute h-5 w-5 drop-shadow-md pointer-events-none select-none"
+                            style={{ left: `${percentFilled}%`, top: "50%", transform: "translate(-50%, -50%)" }}
+                          />
+                        </div>
+                        <p className="text-[11px] text-black mt-1.5 font-medium">
+                          {ticketsRemaining.toLocaleString()} tickets remaining
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-[11px] text-black mt-1.5 font-medium">
-                      {ticketsRemaining.toLocaleString()} tickets remaining
-                    </p>
                   </div>
 
                   {/* Participants + CTA */}
@@ -203,31 +205,29 @@ export function Home() {
                         src={participantsIcon}
                         alt=""
                         aria-hidden="true"
-                        className="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 opacity-25 pointer-events-none select-none"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 opacity-90 pointer-events-none select-none"
                       />
                     </div>
-                    <div className="flex-1 flex flex-col items-center h-full">
-                      <Link
-                        href={`/buy/${campaign.id}`}
-                        className="w-full flex-1 text-black rounded-2xl font-bold hover:brightness-95 active:scale-[0.97] transition-all flex items-center justify-center gap-2 whitespace-nowrap px-2"
-                        style={{
-                          backgroundColor: "#7BC143",
-                          boxShadow: "inset 0 0 0 3px #000000",
-                          fontFamily: "'Highstories', sans-serif",
-                          fontSize: "30px",
-                          letterSpacing: "0.05em",
-                        }}
-                      >
-                        Buy Ticket
-                      </Link>
-                      {/* Decorative ticket mark tucked below the button, inside the card's existing bottom padding */}
+                    <Link
+                      href={`/buy/${campaign.id}`}
+                      className="relative flex-1 text-black rounded-2xl font-bold hover:brightness-95 active:scale-[0.97] transition-all flex items-center justify-center gap-2 whitespace-nowrap px-2"
+                      style={{
+                        backgroundColor: "#7BC143",
+                        boxShadow: "inset 0 0 0 3px #000000",
+                        fontFamily: "'Highstories', sans-serif",
+                        fontSize: "30px",
+                        letterSpacing: "0.05em",
+                      }}
+                    >
+                      Buy Ticket
+                      {/* Decorative ticket mark tucked inside the button, in its bottom-right corner */}
                       <img
                         src={ticketIcon}
                         alt=""
                         aria-hidden="true"
-                        className="h-4 w-4 mt-1.5 shrink-0 opacity-60 pointer-events-none select-none"
+                        className="absolute bottom-1.5 right-2 h-4 w-4 pointer-events-none select-none"
                       />
-                    </div>
+                    </Link>
                   </div>
                 </div>
               </div>

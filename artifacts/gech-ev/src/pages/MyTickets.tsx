@@ -247,9 +247,14 @@ function AnimatedStatCard({
 }) {
   const animated = useCountUp(value);
   return (
-    <div className="bg-card border border-border rounded-2xl p-4 flex items-center justify-between gap-2 shadow-sm">
-      <img src={icon} alt="" aria-hidden="true" className="h-7 w-7 shrink-0 opacity-80" />
-      <div className="flex flex-col items-end justify-center flex-1">
+    <div className="relative bg-card border border-border rounded-2xl p-4 flex items-center justify-end gap-2 shadow-sm overflow-visible">
+      <img
+        src={icon}
+        alt=""
+        aria-hidden="true"
+        className="absolute left-2 top-1/2 -translate-y-1/2 h-14 w-14 pointer-events-none select-none"
+      />
+      <div className="flex flex-col items-end justify-center">
         <span className={cn("text-2xl font-black leading-none", valueClass)}>{animated}</span>
         <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mt-1">
           {label}
