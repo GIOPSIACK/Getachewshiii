@@ -8,6 +8,11 @@ import greenPatternSrc from "@/assets/dark-green-abstract-pattern.jpg";
 import filterAllSrc from "@/assets/filter-all.svg";
 import filterPopularSrc from "@/assets/filter-popular.svg";
 import filterNewSrc from "@/assets/filter-new.svg";
+import activeLotteriesIcon from "@/assets/icons/active-lotteries.svg";
+import participantsIcon from "@/assets/icons/participants.svg";
+import ticketIcon from "@/assets/icons/ticket.svg";
+import soldIcon from "@/assets/icons/sold.svg";
+import goTipIcon from "@/assets/icons/go-tip.svg";
 import { HomeSkeleton } from "@/components/ui/skeleton";
 
 function getTimeRemaining(drawDate: string) {
@@ -146,21 +151,34 @@ export function Home() {
                     className="rounded-2xl p-3.5"
                     style={{ backgroundColor: "#7BC143", boxShadow: "inset 0 0 0 3px #000000" }}
                   >
-                    <div className="flex justify-between text-xs font-semibold mb-2">
-                      <span className="text-black">{campaign.soldSlots} sold</span>
+                    <div className="flex justify-between items-center text-xs font-semibold mb-2">
+                      <span className="relative flex items-center text-black">
+                        <img
+                          src={soldIcon}
+                          alt=""
+                          aria-hidden="true"
+                          className="absolute -left-1.5 top-1/2 -translate-y-1/2 h-6 w-6 opacity-20 -z-0 pointer-events-none select-none"
+                        />
+                        <span className="relative pl-5">{campaign.soldSlots} sold</span>
+                      </span>
                       <span className="text-primary font-bold">{percentFilled}% filled</span>
                     </div>
-                    <div className="h-2.5 w-full bg-muted rounded-full overflow-hidden">
+                    <div className="h-2.5 w-full bg-muted rounded-full overflow-visible relative">
                       <div
-                        className="h-full rounded-full transition-all duration-1000 ease-out relative overflow-hidden"
-                        style={{
-                          width: `${percentFilled}%`,
-                          background: "linear-gradient(90deg, hsl(var(--primary)), hsl(var(--primary)/0.7))",
-                        }}
+                        className="h-full rounded-full transition-all duration-1000 ease-out relative overflow-hidden bg-black"
+                        style={{ width: `${percentFilled}%` }}
                       >
                         {/* Shimmer gleam */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-[shimmer_2s_infinite]" />
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[shimmer_2s_infinite]" />
                       </div>
+                      {/* Tip marker showing sold-ticket momentum at the head of the bar */}
+                      <img
+                        src={goTipIcon}
+                        alt=""
+                        aria-hidden="true"
+                        className="absolute top-1/2 h-4 w-4 -translate-y-1/2 drop-shadow-md pointer-events-none select-none"
+                        style={{ left: `${percentFilled}%`, transform: "translate(-50%, -50%)" }}
+                      />
                     </div>
                     <p className="text-[11px] text-black mt-1.5 font-medium">
                       {ticketsRemaining.toLocaleString()} tickets remaining
@@ -170,30 +188,46 @@ export function Home() {
                   {/* Participants + CTA */}
                   <div className="flex items-stretch gap-3">
                     <div
-                      className="flex items-center gap-2.5 rounded-2xl px-4 py-3 flex-1"
+                      className="relative flex items-center gap-2.5 rounded-2xl px-4 py-3 flex-1 overflow-hidden"
                       style={{ backgroundColor: "#7BC143", boxShadow: "inset 0 0 0 3px #000000" }}
                     >
-                      <Users className="w-4 h-4 text-black shrink-0" />
-                      <div>
+                      <Users className="w-4 h-4 text-black shrink-0 relative z-10" />
+                      <div className="relative z-10">
                         <p className="text-[9px] font-bold text-black uppercase tracking-wider leading-none mb-0.5">
                           Participants
                         </p>
                         <p className="text-xl font-extrabold leading-none text-black">{campaign.soldSlots}</p>
                       </div>
+                      {/* Decorative icon filling the card's existing right-hand space */}
+                      <img
+                        src={participantsIcon}
+                        alt=""
+                        aria-hidden="true"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 opacity-25 pointer-events-none select-none"
+                      />
                     </div>
-                    <Link
-                      href={`/buy/${campaign.id}`}
-                      className="flex-1 py-3.5 text-black rounded-2xl font-bold hover:brightness-95 active:scale-[0.97] transition-all flex items-center justify-center gap-2 whitespace-nowrap px-2"
-                      style={{
-                        backgroundColor: "#7BC143",
-                        boxShadow: "inset 0 0 0 3px #000000",
-                        fontFamily: "'Highstories', sans-serif",
-                        fontSize: "30px",
-                        letterSpacing: "0.05em",
-                      }}
-                    >
-                      Buy Ticket
-                    </Link>
+                    <div className="flex-1 flex flex-col items-center h-full">
+                      <Link
+                        href={`/buy/${campaign.id}`}
+                        className="w-full flex-1 text-black rounded-2xl font-bold hover:brightness-95 active:scale-[0.97] transition-all flex items-center justify-center gap-2 whitespace-nowrap px-2"
+                        style={{
+                          backgroundColor: "#7BC143",
+                          boxShadow: "inset 0 0 0 3px #000000",
+                          fontFamily: "'Highstories', sans-serif",
+                          fontSize: "30px",
+                          letterSpacing: "0.05em",
+                        }}
+                      >
+                        Buy Ticket
+                      </Link>
+                      {/* Decorative ticket mark tucked below the button, inside the card's existing bottom padding */}
+                      <img
+                        src={ticketIcon}
+                        alt=""
+                        aria-hidden="true"
+                        className="h-4 w-4 mt-1.5 shrink-0 opacity-60 pointer-events-none select-none"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -239,12 +273,15 @@ export function Home() {
           {/* Active Lotteries */}
           <div className="px-4 mb-28">
             <div className="flex justify-between items-center mb-3">
-              <h3
-                style={{ fontFamily: "'Highstories', sans-serif", fontSize: "34px", letterSpacing: "0.05em" }}
-                className="font-extrabold whitespace-nowrap"
-              >
-                Active Lotteries
-              </h3>
+              <div className="flex items-center gap-2">
+                <img src={activeLotteriesIcon} alt="" aria-hidden="true" className="h-6 w-6 shrink-0" />
+                <h3
+                  style={{ fontFamily: "'Highstories', sans-serif", fontSize: "34px", letterSpacing: "0.05em" }}
+                  className="font-extrabold whitespace-nowrap"
+                >
+                  Active Lotteries
+                </h3>
+              </div>
               <span className="text-xs bg-muted text-muted-foreground font-semibold px-2.5 py-1 rounded-full">
                 {campaigns && campaigns.length > 1 ? `${campaigns.length - 1}` : "0"} available
               </span>

@@ -2,6 +2,9 @@ import { useState } from "react";
 import { useListTickets, useGetTicketStats } from "@workspace/api-client-react";
 import { Search, Ticket as TicketIcon, Clock, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import bydImage from "@/assets/byd-yuan-up.jpg";
+import activeStatIcon from "@/assets/icons/stat-active.svg";
+import pendingStatIcon from "@/assets/icons/stat-pending.svg";
+import totalStatIcon from "@/assets/icons/stat-total.svg";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useCountUp } from "@/hooks/useCountUp";
@@ -59,9 +62,9 @@ export function MyTickets() {
       {/* Stats Cards */}
       {searchedPhone && stats && !ticketsLoading && (
         <div className="px-4 pt-4 pb-2 grid grid-cols-3 gap-3 animate-in fade-in slide-in-from-bottom-3 duration-400">
-          <AnimatedStatCard value={stats.active} label="Active" valueClass="text-primary" />
-          <AnimatedStatCard value={stats.pending} label="Pending" valueClass="text-yellow-500" />
-          <AnimatedStatCard value={stats.total} label="Total" valueClass="text-yellow-500" />
+          <AnimatedStatCard value={stats.active} label="Active" valueClass="text-primary" icon={activeStatIcon} />
+          <AnimatedStatCard value={stats.pending} label="Pending" valueClass="text-yellow-500" icon={pendingStatIcon} />
+          <AnimatedStatCard value={stats.total} label="Total" valueClass="text-yellow-500" icon={totalStatIcon} />
         </div>
       )}
 
@@ -235,18 +238,23 @@ function AnimatedStatCard({
   value,
   label,
   valueClass,
+  icon,
 }: {
   value: number;
   label: string;
   valueClass: string;
+  icon: string;
 }) {
   const animated = useCountUp(value);
   return (
-    <div className="bg-card border border-border rounded-2xl p-4 flex flex-col items-center justify-center shadow-sm">
-      <span className={cn("text-2xl font-black leading-none", valueClass)}>{animated}</span>
-      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mt-1">
-        {label}
-      </span>
+    <div className="bg-card border border-border rounded-2xl p-4 flex items-center justify-between gap-2 shadow-sm">
+      <img src={icon} alt="" aria-hidden="true" className="h-7 w-7 shrink-0 opacity-80" />
+      <div className="flex flex-col items-end justify-center flex-1">
+        <span className={cn("text-2xl font-black leading-none", valueClass)}>{animated}</span>
+        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mt-1">
+          {label}
+        </span>
+      </div>
     </div>
   );
 }
