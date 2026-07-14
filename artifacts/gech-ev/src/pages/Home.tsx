@@ -151,40 +151,38 @@ export function Home() {
                     className="rounded-2xl p-3.5"
                     style={{ backgroundColor: "#7BC143", boxShadow: "inset 0 0 0 3px #000000" }}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex justify-between items-center text-xs font-semibold mb-2">
+                      <span className="relative flex items-center">
+                        <img
+                          src={soldIcon}
+                          alt=""
+                          aria-hidden="true"
+                          className="absolute -left-3 top-1/2 -translate-y-1/2 h-12 w-12 -z-0 pointer-events-none select-none"
+                        />
+                        <span className="relative z-10 pl-8 text-black">{campaign.soldSlots} sold</span>
+                      </span>
+                      <span className="text-primary font-bold">{percentFilled}% filled</span>
+                    </div>
+                    <div className="h-5 w-full bg-muted rounded-full overflow-visible relative">
+                      <div
+                        className="h-full rounded-full transition-all duration-1000 ease-out relative overflow-hidden bg-black"
+                        style={{ width: `${percentFilled}%` }}
+                      >
+                        {/* Shimmer gleam */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[shimmer_2s_infinite]" />
+                      </div>
+                      {/* Tip marker showing sold-ticket momentum at the head of the bar */}
                       <img
-                        src={soldIcon}
+                        src={goTipIcon}
                         alt=""
                         aria-hidden="true"
-                        className="h-12 w-12 shrink-0"
+                        className="absolute h-5 w-5 drop-shadow-md pointer-events-none select-none"
+                        style={{ left: `${percentFilled}%`, top: "50%", transform: "translate(-50%, -50%)" }}
                       />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-center text-xs font-semibold mb-2">
-                          <span className="text-black">{campaign.soldSlots} sold</span>
-                          <span className="text-primary font-bold">{percentFilled}% filled</span>
-                        </div>
-                        <div className="h-5 w-full bg-muted rounded-full overflow-visible relative">
-                          <div
-                            className="h-full rounded-full transition-all duration-1000 ease-out relative overflow-hidden bg-black"
-                            style={{ width: `${percentFilled}%` }}
-                          >
-                            {/* Shimmer gleam */}
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[shimmer_2s_infinite]" />
-                          </div>
-                          {/* Tip marker showing sold-ticket momentum at the head of the bar */}
-                          <img
-                            src={goTipIcon}
-                            alt=""
-                            aria-hidden="true"
-                            className="absolute h-5 w-5 drop-shadow-md pointer-events-none select-none"
-                            style={{ left: `${percentFilled}%`, top: "50%", transform: "translate(-50%, -50%)" }}
-                          />
-                        </div>
-                        <p className="text-[11px] text-black mt-1.5 font-medium">
-                          {ticketsRemaining.toLocaleString()} tickets remaining
-                        </p>
-                      </div>
                     </div>
+                    <p className="text-[11px] text-black mt-1.5 font-medium">
+                      {ticketsRemaining.toLocaleString()} tickets remaining
+                    </p>
                   </div>
 
                   {/* Participants + CTA */}
@@ -274,7 +272,7 @@ export function Home() {
           <div className="px-4 mb-28">
             <div className="flex justify-between items-center mb-3">
               <div className="flex items-center gap-2">
-                <img src={activeLotteriesIcon} alt="" aria-hidden="true" className="h-6 w-6 shrink-0" />
+                <img src={activeLotteriesIcon} alt="" aria-hidden="true" className="h-12 w-12 shrink-0" />
                 <h3
                   style={{ fontFamily: "'Highstories', sans-serif", fontSize: "34px", letterSpacing: "0.05em" }}
                   className="font-extrabold whitespace-nowrap"
