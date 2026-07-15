@@ -55,7 +55,7 @@ export function BuyTicket() {
 
   return (
     <div className="flex flex-col flex-1 pb-safe animate-in fade-in slide-in-from-right-4 duration-300">
-      <div className="px-4 pt-12 pb-4 flex flex-col gap-3">
+      <div className="px-4 py-3 flex flex-col gap-3">
         <div className="flex items-center gap-2.5">
           <img src={glogoSrc} alt="Gech Ekub Logo" className="w-9 h-9 rounded-xl object-cover shadow-sm shrink-0" />
           <span style={{ fontFamily: "'Hegiena', sans-serif" }} className="text-xl leading-tight tracking-tight">
