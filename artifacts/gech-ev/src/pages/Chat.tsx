@@ -133,7 +133,9 @@ export function Chat() {
           <MessageCircle className="w-4.5 h-4.5 text-primary" />
         </div>
         <div>
-          <h1 className="text-lg font-extrabold leading-tight">Ask Gech Ekub</h1>
+          <h1 className="text-lg font-extrabold leading-tight" style={{ fontFamily: "'Highstories', sans-serif" }}>
+            Ask Gech Ekub
+          </h1>
           <p className="text-xs text-muted-foreground">Ask anything about the app</p>
         </div>
       </div>

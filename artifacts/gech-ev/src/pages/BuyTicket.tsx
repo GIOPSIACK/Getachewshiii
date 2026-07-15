@@ -4,6 +4,10 @@ import { useGetCampaign } from "@workspace/api-client-react";
 import { useCheckout } from "@/contexts/CheckoutContext";
 import { Minus, Plus, RefreshCw, ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
+import glogoSrc from "@/assets/glogo.jpg";
+import numbersPatternBg from "@/assets/green-pattern-numbers-bg.jfif";
+
+const TOTAL_LUCKY_NUMBERS = 5000;
 
 export function BuyTicket() {
   const [, params] = useRoute("/buy/:campaignId");
@@ -34,7 +38,7 @@ export function BuyTicket() {
   const quickPick = () => {
     const numbers = new Set<number>();
     while (numbers.size < 6) {
-      numbers.add(Math.floor(Math.random() * 49) + 1);
+      numbers.add(Math.floor(Math.random() * TOTAL_LUCKY_NUMBERS) + 1);
     }
     setLuckyNumbers(Array.from(numbers).sort((a, b) => a - b));
   };
@@ -51,20 +55,25 @@ export function BuyTicket() {
 
   return (
     <div className="flex flex-col flex-1 pb-safe animate-in fade-in slide-in-from-right-4 duration-300">
-      <div className="px-4 pt-12 pb-4 flex items-center gap-4">
+      <div className="px-4 pt-12 pb-4 flex items-center gap-3">
         <button 
           onClick={() => setLocation("/")}
-          className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center text-foreground shadow-sm"
+          className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center text-foreground shadow-sm shrink-0"
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
-        <h1 className="text-xl font-bold">Customize Ticket</h1>
+        <img src={glogoSrc} alt="Gech Ekub Logo" className="w-9 h-9 rounded-xl object-cover shadow-sm shrink-0" />
+        <h1 className="text-xl font-bold" style={{ fontFamily: "'Highstories', sans-serif" }}>
+          Customize Ticket
+        </h1>
       </div>
 
       <div className="px-4 flex-1 flex flex-col gap-6">
         {/* Quantity Selector */}
         <div className="bg-card rounded-[1.5rem] p-5 shadow-sm border border-border">
-          <h2 className="text-base font-bold mb-4">How many tickets?</h2>
+          <h2 className="text-base font-bold mb-4" style={{ fontFamily: "'Highstories', sans-serif" }}>
+            How many tickets?
+          </h2>
           <div className="flex items-center justify-between">
             <div className="text-2xl font-extrabold text-foreground">
               {quantity} <span className="text-sm font-medium text-muted-foreground ml-1">x {campaign.ticketPrice.toLocaleString()} Birr</span>
@@ -94,7 +103,9 @@ export function BuyTicket() {
         <div className="bg-card rounded-[1.5rem] p-5 shadow-sm border border-border flex-1">
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h2 className="text-base font-bold">Pick 6 Lucky Numbers</h2>
+              <h2 className="text-base font-bold" style={{ fontFamily: "'Highstories', sans-serif" }}>
+                Pick 6 Lucky Numbers
+              </h2>
               <p className="text-xs text-muted-foreground mt-1">For your primary ticket</p>
             </div>
             <button 
@@ -122,28 +133,37 @@ export function BuyTicket() {
             ))}
           </div>
 
-          <div className="grid grid-cols-7 gap-2">
-            {Array.from({ length: 49 }, (_, i) => i + 1).map((num) => {
-              const isSelected = luckyNumbers.includes(num);
-              const isDisabled = !isSelected && luckyNumbers.length >= 6;
-              return (
-                <button
-                  key={num}
-                  onClick={() => toggleNumber(num)}
-                  disabled={isDisabled}
-                  className={cn(
-                    "aspect-square rounded-full flex items-center justify-center text-sm font-semibold transition-all",
-                    isSelected 
-                      ? "bg-primary text-primary-foreground shadow-sm" 
-                      : isDisabled 
-                        ? "opacity-30 bg-muted text-muted-foreground"
-                        : "bg-muted text-foreground hover:bg-border active:scale-95"
-                  )}
-                >
-                  {num}
-                </button>
-              );
-            })}
+          <div
+            className="max-h-72 overflow-y-auto rounded-2xl p-3 border border-border/60"
+            style={{
+              backgroundImage: `url(${numbersPatternBg})`,
+              backgroundRepeat: "repeat",
+              backgroundSize: "160px",
+            }}
+          >
+            <div className="grid grid-cols-7 gap-2">
+              {Array.from({ length: TOTAL_LUCKY_NUMBERS }, (_, i) => i + 1).map((num) => {
+                const isSelected = luckyNumbers.includes(num);
+                const isDisabled = !isSelected && luckyNumbers.length >= 6;
+                return (
+                  <button
+                    key={num}
+                    onClick={() => toggleNumber(num)}
+                    disabled={isDisabled}
+                    className={cn(
+                      "aspect-square rounded-full flex items-center justify-center text-sm font-semibold transition-all shadow-sm",
+                      isSelected 
+                        ? "bg-primary text-primary-foreground shadow-sm" 
+                        : isDisabled 
+                          ? "opacity-40 bg-white/70 text-muted-foreground"
+                          : "bg-white/90 text-foreground hover:bg-white active:scale-95"
+                    )}
+                  >
+                    {num}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
@@ -159,7 +179,12 @@ export function BuyTicket() {
         <button
           onClick={() => setLocation(`/checkout/${campaign.id}`)}
           disabled={!isComplete}
-          className="w-full py-4 bg-primary text-primary-foreground rounded-2xl font-bold text-lg shadow-sm hover:brightness-105 active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none"
+          className="w-full py-4 text-white rounded-2xl font-bold text-lg hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none"
+          style={{
+            backgroundColor: "#0A2218",
+            boxShadow: "inset 0 0 0 3px #000000",
+            fontFamily: "'Highstories', sans-serif",
+          }}
         >
           {isComplete ? "Continue to Checkout" : "Pick 6 Numbers"}
         </button>

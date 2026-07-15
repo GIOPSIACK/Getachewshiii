@@ -43,7 +43,9 @@ export function MyTickets() {
             Gech Ekub
           </span>
         </div>
-        <h1 className="text-2xl font-extrabold mb-0.5">My Tickets</h1>
+        <h1 className="text-2xl font-extrabold mb-0.5" style={{ fontFamily: "'Highstories', sans-serif" }}>
+          My Tickets
+        </h1>
         <p className="text-sm text-muted-foreground mb-4">Track your lottery entries</p>
 
         {/* Phone search */}
@@ -53,15 +55,15 @@ export function MyTickets() {
             value={inputPhone}
             onChange={(e) => setInputPhone(e.target.value.replace(/\D/g, "").slice(0, 12))}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            placeholder="251922990331"
+            placeholder="+251901234567"
             className="flex-1 bg-card border border-border rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/30 text-base font-medium shadow-sm tracking-wider"
           />
           <button
             onClick={handleSearch}
-            className="px-5 py-3 bg-primary text-primary-foreground rounded-2xl font-bold flex items-center gap-2 shadow-sm shadow-primary/20 hover:brightness-105 active:scale-[0.97] transition-all"
+            aria-label="Search"
+            className="px-4 py-3 bg-primary text-primary-foreground rounded-2xl font-bold flex items-center justify-center shadow-sm shadow-primary/20 hover:brightness-105 active:scale-[0.97] transition-all"
           >
             <Search className="w-4 h-4" />
-            <span className="text-sm">Search</span>
           </button>
         </div>
       </div>
@@ -86,7 +88,9 @@ export function MyTickets() {
       {searchedPhone && !ticketsLoading && tickets?.length === 0 && (
         <div className="mx-4 mt-4 text-center p-8 bg-card rounded-3xl border border-dashed border-border animate-in fade-in">
           <TicketIcon className="w-12 h-12 text-muted mx-auto mb-3" />
-          <h3 className="font-bold text-lg mb-1">No tickets found</h3>
+          <h3 className="font-bold text-lg mb-1" style={{ fontFamily: "'Highstories', sans-serif" }}>
+            No tickets found
+          </h3>
           <p className="text-sm text-muted-foreground">
             Could not find any tickets for {searchedPhone}.
           </p>
@@ -261,7 +265,7 @@ function AnimatedStatCard({
         aria-hidden="true"
         className="absolute left-2 top-1/2 -translate-y-1/2 h-14 w-14 pointer-events-none select-none"
       />
-      <div className="flex flex-col items-end justify-center">
+      <div className="relative z-10 flex flex-col items-end justify-center ml-3">
         <span className={cn("text-2xl font-black leading-none", valueClass)}>{animated}</span>
         <span className="text-[10px] font-bold text-black uppercase tracking-wider mt-1">
           {label}
