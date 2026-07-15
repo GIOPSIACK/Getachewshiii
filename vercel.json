@@ -1,0 +1,16 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "nodeVersion": "22.x",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm --filter @workspace/gech-ev run build",
+  "outputDirectory": "artifacts/gech-ev/dist",
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api" },
+    { "source": "/((?!api/|telegram).*)", "destination": "/index.html" }
+  ],
+  "functions": {
+    "api/index.ts": { "maxDuration": 30 },
+    "api/telegram.ts": { "maxDuration": 30 }
+  }
+}
