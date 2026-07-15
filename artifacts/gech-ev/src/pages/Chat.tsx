@@ -126,9 +126,9 @@ export function Chat() {
   };
 
   return (
-    <div className="flex flex-col flex-1 min-h-[100dvh]">
+    <div className="flex flex-col flex-1 h-[calc(100dvh-6rem)]">
       {/* Header */}
-      <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/40 px-4 pt-10 pb-4 flex items-center gap-2.5">
+      <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/40 px-4 py-3 flex items-center gap-2.5">
         <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shadow-sm shrink-0">
           <MessageCircle className="w-4.5 h-4.5 text-primary" />
         </div>
