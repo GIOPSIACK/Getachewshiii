@@ -55,23 +55,30 @@ export function BuyTicket() {
 
   return (
     <div className="flex flex-col flex-1 pb-safe animate-in fade-in slide-in-from-right-4 duration-300">
-      <div className="px-4 pt-12 pb-4 flex items-center gap-3">
-        <button 
-          onClick={() => setLocation("/")}
-          className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center text-foreground shadow-sm shrink-0"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-        <img src={glogoSrc} alt="Gech Ekub Logo" className="w-9 h-9 rounded-xl object-cover shadow-sm shrink-0" />
-        <h1 className="text-xl font-bold" style={{ fontFamily: "'Highstories', sans-serif" }}>
-          Customize Ticket
-        </h1>
+      <div className="px-4 pt-12 pb-4 flex flex-col gap-3">
+        <div className="flex items-center gap-2.5">
+          <img src={glogoSrc} alt="Gech Ekub Logo" className="w-9 h-9 rounded-xl object-cover shadow-sm shrink-0" />
+          <span style={{ fontFamily: "'Hegiena', sans-serif" }} className="text-xl leading-tight tracking-tight">
+            Gech Ekub
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setLocation("/")}
+            className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center text-foreground shadow-sm shrink-0"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <h1 className="text-xl font-bold" style={{ fontFamily: "'Highstories', sans-serif", letterSpacing: "0.05em" }}>
+            Customize Ticket
+          </h1>
+        </div>
       </div>
 
       <div className="px-4 flex-1 flex flex-col gap-6">
         {/* Quantity Selector */}
         <div className="bg-card rounded-[1.5rem] p-5 shadow-sm border border-border">
-          <h2 className="text-base font-bold mb-4" style={{ fontFamily: "'Highstories', sans-serif" }}>
+          <h2 className="font-bold mb-4" style={{ fontFamily: "'Highstories', sans-serif", letterSpacing: "0.05em", fontSize: "2rem" }}>
             How many tickets?
           </h2>
           <div className="flex items-center justify-between">
@@ -100,17 +107,28 @@ export function BuyTicket() {
         </div>
 
         {/* Lucky Numbers Picker */}
-        <div className="bg-card rounded-[1.5rem] p-5 shadow-sm border border-border flex-1">
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h2 className="text-base font-bold" style={{ fontFamily: "'Highstories', sans-serif" }}>
+        <div
+          className="relative overflow-hidden bg-card rounded-[1.5rem] p-5 shadow-sm border border-border flex-1"
+          style={{
+            backgroundImage: `url(${numbersPatternBg})`,
+            backgroundRepeat: "repeat",
+            backgroundSize: "160px",
+          }}
+        >
+          <div className="flex justify-between items-center mb-6 gap-3">
+            <div className="rounded-2xl px-3 py-2" style={{ backgroundColor: "#E6EBB2" }}>
+              <h2
+                className="font-bold"
+                style={{ fontFamily: "'Highstories', sans-serif", letterSpacing: "0.05em", fontSize: "2rem" }}
+              >
                 Pick 6 Lucky Numbers
               </h2>
               <p className="text-xs text-muted-foreground mt-1">For your primary ticket</p>
             </div>
             <button 
               onClick={quickPick}
-              className="flex items-center gap-1.5 text-xs font-bold text-primary bg-primary/10 px-3 py-1.5 rounded-full"
+              className="flex items-center gap-1.5 text-xs font-bold text-primary px-3 py-1.5 rounded-full shrink-0"
+              style={{ backgroundColor: "#E6EBB2" }}
             >
               <RefreshCw className="w-3.5 h-3.5" />
               Quick Pick
@@ -122,9 +140,9 @@ export function BuyTicket() {
               <div 
                 key={i} 
                 className={cn(
-                  "w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold border-2 transition-all",
+                  "w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all",
                   luckyNumbers[i] 
-                    ? "bg-secondary border-secondary text-secondary-foreground shadow-sm scale-110" 
+                    ? "bg-secondary border-secondary text-secondary-foreground shadow-sm scale-105" 
                     : "bg-muted/50 border-dashed border-border text-muted-foreground"
                 )}
               >
@@ -134,12 +152,8 @@ export function BuyTicket() {
           </div>
 
           <div
-            className="max-h-72 overflow-y-auto rounded-2xl p-3 border border-border/60"
-            style={{
-              backgroundImage: `url(${numbersPatternBg})`,
-              backgroundRepeat: "repeat",
-              backgroundSize: "160px",
-            }}
+            className="max-h-72 overflow-y-auto rounded-2xl p-3"
+            style={{ backgroundColor: "#E6EBB2" }}
           >
             <div className="grid grid-cols-7 gap-2">
               {Array.from({ length: TOTAL_LUCKY_NUMBERS }, (_, i) => i + 1).map((num) => {
@@ -155,8 +169,8 @@ export function BuyTicket() {
                       isSelected 
                         ? "bg-primary text-primary-foreground shadow-sm" 
                         : isDisabled 
-                          ? "opacity-40 bg-white/70 text-muted-foreground"
-                          : "bg-white/90 text-foreground hover:bg-white active:scale-95"
+                          ? "opacity-40 bg-black/60 text-white/70"
+                          : "bg-black text-white hover:bg-black/80 active:scale-95"
                     )}
                   >
                     {num}
@@ -179,12 +193,26 @@ export function BuyTicket() {
         <button
           onClick={() => setLocation(`/checkout/${campaign.id}`)}
           disabled={!isComplete}
-          className="w-full py-4 text-white rounded-2xl font-bold text-lg hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none"
-          style={{
-            backgroundColor: "#0A2218",
-            boxShadow: "inset 0 0 0 3px #000000",
-            fontFamily: "'Highstories', sans-serif",
-          }}
+          className={cn(
+            "w-full py-4 rounded-2xl font-bold hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none",
+            isComplete ? "text-black" : "text-white text-lg"
+          )}
+          style={
+            isComplete
+              ? {
+                  backgroundColor: "#7BC143",
+                  boxShadow: "inset 0 0 0 3px #000000",
+                  fontFamily: "'Highstories', sans-serif",
+                  fontSize: "30px",
+                  letterSpacing: "0.05em",
+                }
+              : {
+                  backgroundColor: "#0A2218",
+                  boxShadow: "inset 0 0 0 3px #000000",
+                  fontFamily: "'Highstories', sans-serif",
+                  letterSpacing: "0.05em",
+                }
+          }
         >
           {isComplete ? "Continue to Checkout" : "Pick 6 Numbers"}
         </button>
