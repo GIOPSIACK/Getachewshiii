@@ -176,12 +176,12 @@ export function BuyTicket() {
                 <div 
                   key={i} 
                   className={cn(
-                    "rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all",
+                    "rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all px-1.5",
                     luckyNumbers[i] 
                       ? "bg-secondary border-secondary text-secondary-foreground shadow-sm scale-105" 
                       : "bg-muted/50 border-dashed border-border text-muted-foreground"
                   )}
-                  style={{ width: "27px", height: "27px" }}
+                  style={{ minWidth: "34px", height: "34px" }}
                 >
                   {luckyNumbers[i] || "?"}
                 </div>

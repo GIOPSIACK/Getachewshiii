@@ -14,7 +14,7 @@ export function Profile() {
   return (
     <div className="flex flex-col flex-1 min-h-[100dvh]">
       {/* Header */}
-      <div className="px-6 pt-12 pb-4 flex justify-between items-center">
+      <div className="px-6 py-3 flex justify-between items-center">
         <div className="flex items-center gap-2.5">
           <img src={glogoSrc} alt="Gech Ekub Logo" className="w-9 h-9 rounded-xl object-cover shadow-sm" />
           <span style={{ fontFamily: "'Hegiena', sans-serif" }} className="text-xl leading-tight tracking-tight">
