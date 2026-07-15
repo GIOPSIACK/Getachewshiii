@@ -104,6 +104,19 @@ export function BuyTicket() {
               </button>
             </div>
           </div>
+
+          <div className="mt-4 pt-4 border-t border-dashed border-border flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Total Entries</p>
+              <p className="text-lg font-extrabold text-foreground">{quantity}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Winning Odds</p>
+              <p className="text-lg font-extrabold text-primary">
+                1 in {Math.max(1, Math.round(campaign.totalSlots / quantity)).toLocaleString()}
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Lucky Numbers Picker */}
