@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Phone } from "lucide-react";
 import glogoSrc from "@/assets/glogo.jpg";
+import jesterSrc from "@/assets/jester.png";
 
 export function Profile() {
   const [savedPhone, setSavedPhone] = useState<string>("");
@@ -45,8 +46,9 @@ export function Profile() {
       </div>
 
       {/* Footer */}
-      <div className="px-4 pb-24 text-center">
-        <p className="text-[11px] text-muted-foreground leading-relaxed">
+      <div className="pb-24 text-center">
+        <img src={jesterSrc} alt="Gech Ekub Jester" className="w-full block mb-3" />
+        <p className="text-[11px] text-muted-foreground leading-relaxed px-4">
           © 2026 Gech EV Makina Ekub. All Rights Reserved.{"\n"}
           <span className="text-primary font-medium">Designed & Developed by Gech Team</span>
         </p>

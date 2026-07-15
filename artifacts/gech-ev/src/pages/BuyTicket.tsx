@@ -163,11 +163,12 @@ export function BuyTicket() {
                 <div 
                   key={i} 
                   className={cn(
-                    "w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all",
+                    "rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all",
                     luckyNumbers[i] 
                       ? "bg-secondary border-secondary text-secondary-foreground shadow-sm scale-105" 
                       : "bg-muted/50 border-dashed border-border text-muted-foreground"
                   )}
+                  style={{ width: "27px", height: "27px" }}
                 >
                   {luckyNumbers[i] || "?"}
                 </div>
@@ -191,14 +192,10 @@ export function BuyTicket() {
                     className={cn(
                       "aspect-square rounded-full flex items-center justify-center text-sm font-semibold transition-all shadow-sm",
                       isSelected 
-                        ? "bg-primary text-primary-foreground shadow-sm" 
+                        ? "ring-2 ring-[#7BC143]" 
                         : "hover:bg-black/80 active:scale-95"
                     )}
-                    style={
-                      isSelected
-                        ? undefined
-                        : { backgroundColor: "#000000", color: "#FFFFFF", opacity: isDisabled ? 0.4 : 1 }
-                    }
+                    style={{ backgroundColor: "#000000", color: "#FFFFFF", opacity: isDisabled ? 0.4 : 1 }}
                   >
                     {num}
                   </button>
