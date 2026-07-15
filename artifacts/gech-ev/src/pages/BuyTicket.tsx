@@ -82,7 +82,7 @@ export function BuyTicket() {
             How many tickets?
           </h2>
           <div className="flex items-center justify-between">
-            <div className="text-2xl font-extrabold text-foreground">
+            <div className="bg-white rounded-2xl shadow-sm px-4 py-2 text-2xl font-extrabold text-foreground">
               {quantity} <span className="text-sm font-medium text-muted-foreground ml-1">x {campaign.ticketPrice.toLocaleString()} Birr</span>
             </div>
             
@@ -111,8 +111,9 @@ export function BuyTicket() {
           className="relative overflow-hidden bg-card rounded-[1.5rem] p-5 shadow-sm border border-border flex-1"
           style={{
             backgroundImage: `url(${numbersPatternBg})`,
-            backgroundRepeat: "repeat",
-            backgroundSize: "160px",
+            backgroundRepeat: "no-repeat",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
           }}
         >
           <div className="flex justify-between items-center mb-6 gap-3">
@@ -125,30 +126,53 @@ export function BuyTicket() {
               </h2>
               <p className="text-xs text-muted-foreground mt-1">For your primary ticket</p>
             </div>
-            <button 
-              onClick={quickPick}
-              className="flex items-center gap-1.5 text-xs font-bold text-primary px-3 py-1.5 rounded-full shrink-0"
-              style={{ backgroundColor: "#E6EBB2" }}
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Quick Pick
-            </button>
+            <div className="flex flex-col gap-2 shrink-0">
+              <button 
+                onClick={quickPick}
+                className="flex items-center justify-center gap-1.5 text-black rounded-full hover:brightness-110 active:scale-[0.97] transition-all px-4 py-2"
+                style={{
+                  backgroundColor: "#7BC143",
+                  boxShadow: "inset 0 0 0 3px #000000",
+                  fontFamily: "'Highstories', sans-serif",
+                  letterSpacing: "0.05em",
+                  fontSize: "13px",
+                }}
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                Quick Pick
+              </button>
+              <button 
+                onClick={() => setLuckyNumbers([])}
+                className="flex items-center justify-center gap-1.5 text-black rounded-full hover:brightness-110 active:scale-[0.97] transition-all px-4 py-2"
+                style={{
+                  backgroundColor: "#7BC143",
+                  boxShadow: "inset 0 0 0 3px #000000",
+                  fontFamily: "'Highstories', sans-serif",
+                  letterSpacing: "0.05em",
+                  fontSize: "13px",
+                }}
+              >
+                Reset
+              </button>
+            </div>
           </div>
 
-          <div className="flex justify-center gap-2 mb-8">
-            {[0, 1, 2, 3, 4, 5].map((i) => (
-              <div 
-                key={i} 
-                className={cn(
-                  "w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all",
-                  luckyNumbers[i] 
-                    ? "bg-secondary border-secondary text-secondary-foreground shadow-sm scale-105" 
-                    : "bg-muted/50 border-dashed border-border text-muted-foreground"
-                )}
-              >
-                {luckyNumbers[i] || "?"}
-              </div>
-            ))}
+          <div className="bg-white rounded-2xl p-3 mb-8 shadow-sm">
+            <div className="flex justify-center gap-2">
+              {[0, 1, 2, 3, 4, 5].map((i) => (
+                <div 
+                  key={i} 
+                  className={cn(
+                    "w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all",
+                    luckyNumbers[i] 
+                      ? "bg-secondary border-secondary text-secondary-foreground shadow-sm scale-105" 
+                      : "bg-muted/50 border-dashed border-border text-muted-foreground"
+                  )}
+                >
+                  {luckyNumbers[i] || "?"}
+                </div>
+              ))}
+            </div>
           </div>
 
           <div
@@ -168,10 +192,13 @@ export function BuyTicket() {
                       "aspect-square rounded-full flex items-center justify-center text-sm font-semibold transition-all shadow-sm",
                       isSelected 
                         ? "bg-primary text-primary-foreground shadow-sm" 
-                        : isDisabled 
-                          ? "opacity-40 bg-black/60 text-white/70"
-                          : "bg-black text-white hover:bg-black/80 active:scale-95"
+                        : "hover:bg-black/80 active:scale-95"
                     )}
+                    style={
+                      isSelected
+                        ? undefined
+                        : { backgroundColor: "#000000", color: "#FFFFFF", opacity: isDisabled ? 0.4 : 1 }
+                    }
                   >
                     {num}
                   </button>
