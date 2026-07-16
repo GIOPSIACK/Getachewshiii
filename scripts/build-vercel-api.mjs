@@ -8,6 +8,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const artifactDir = path.dirname(fileURLToPath(import.meta.url));
+// Repo root is one level up from scripts/
+const repoRoot = path.resolve(artifactDir, "..");
 
 globalThis.require = createRequire(import.meta.url);
 
@@ -16,7 +18,7 @@ await build({
   platform: "node",
   bundle: true,
   format: "esm",
-  outfile: path.resolve(artifactDir, "api/index.mjs"),
+  outfile: path.resolve(repoRoot, "api/index.mjs"),
   outExtension: { ".js": ".mjs" },
   target: "node22",
   external: [
@@ -41,4 +43,4 @@ globalThis.__dirname = __p.dirname(globalThis.__filename);`,
   },
 });
 
-console.log("Built api/server.mjs");
+console.log("Built api/index.mjs");
