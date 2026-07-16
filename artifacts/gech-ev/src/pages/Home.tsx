@@ -3,6 +3,8 @@ import { useListCampaigns } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import { Users, Trophy, Ticket, Star, Flame, TrendingUp, Zap, Check } from "lucide-react";
 import bydImage from "@/assets/byd-yuan-up.jpg";
+import bydYuanPlusImage from "@/assets/byd-yuan-plus.webp";
+import sinotrukHowoImage from "@/assets/sinotruk-howo-371.jpg";
 import glogoSrc from "@/assets/glogo.jpg";
 import greenPatternSrc from "@/assets/dark-green-abstract-pattern.jpg";
 import filterAllSrc from "@/assets/filter-all.svg";
@@ -20,6 +22,8 @@ import { HomeSkeleton } from "@/components/ui/skeleton";
 // imageUrl takes precedence when present.
 const VEHICLE_IMAGES: Record<string, string> = {
   "BYD Yuan Up": bydImage,
+  "BYD Yuan Plus": bydYuanPlusImage,
+  "Sinotruk HOWO 371": sinotrukHowoImage,
 };
 
 function vehicleImage(campaign: { imageUrl?: string | null; vehicleModel: string }): string {
