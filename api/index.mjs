@@ -62695,11 +62695,6 @@ var registrationsTable = pgTable("registrations", {
 
 // ../../lib/db/src/index.ts
 var { Pool: Pool3 } = esm_default;
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?"
-  );
-}
 var connectionString = process.env.DATABASE_URL;
 var usesPooler = /[?&]pgbouncer=true/.test(connectionString) || connectionString.includes(":6543");
 var pool2 = new Pool3({
