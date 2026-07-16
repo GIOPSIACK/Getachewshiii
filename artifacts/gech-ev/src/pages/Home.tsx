@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useListCampaigns } from "@workspace/api-client-react";
 import { Link } from "wouter";
-import { Users, Trophy, Ticket, Star, Flame, TrendingUp, Zap, Check } from "lucide-react";
+import { Users, Trophy, Ticket, Star, Flame, TrendingUp, Zap, Check, Ban } from "lucide-react";
 import bydImage from "@/assets/byd-yuan-up.jpg";
 import bydYuanPlusImage from "@/assets/byd-yuan-plus.webp";
 import sinotrukHowoImage from "@/assets/sinotruk-howo-371.jpg";
@@ -17,6 +17,13 @@ import soldIcon from "@/assets/icons/sold.svg";
 import goTipIcon from "@/assets/icons/go-tip.svg";
 import { HomeSkeleton } from "@/components/ui/skeleton";
 
+const ALLOWED_MODELS = ["BYD Yuan Plus", "Sinotruk HOWO 371"] as const;
+
+const MODEL_PRICES: Record<string, number> = {
+  "BYD Yuan Plus": 3000,
+  "Sinotruk HOWO 371": 7000,
+};
+
 // Local hero images keyed by vehicle model. Drop in real JPGs for the new
 // vehicles (e.g. src/assets/byd-yuan-plus.jpg) and add them here; the API
 // imageUrl takes precedence when present.
@@ -28,6 +35,32 @@ const VEHICLE_IMAGES: Record<string, string> = {
 
 function vehicleImage(campaign: { imageUrl?: string | null; vehicleModel: string }): string {
   return campaign.imageUrl || VEHICLE_IMAGES[campaign.vehicleModel] || bydImage;
+}
+
+// 15-day countdown stored in sessionStorage
+const SELLING_END_KEY = "gech:sellingPeriodEnd";
+
+function getSellingEnd(): number {
+  const stored = sessionStorage.getItem(SELLING_END_KEY);
+  if (stored) {
+    const end = Number(stored);
+    if (!Number.isNaN(end) && end > Date.now()) return end;
+  }
+  const end = Date.now() + 15 * 24 * 60 * 60 * 1000;
+  sessionStorage.setItem(SELLING_END_KEY, String(end));
+  return end;
+}
+
+function getSellingRemaining(end: number) {
+  const total = end - Date.now();
+  if (total <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0, expired: true };
+  return {
+    days: Math.floor(total / (1000 * 60 * 60 * 24)),
+    hours: Math.floor((total / (1000 * 60 * 60)) % 24),
+    minutes: Math.floor((total / (1000 * 60)) % 60),
+    seconds: Math.floor((total / 1000) % 60),
+    expired: false,
+  };
 }
 
 function getTimeRemaining(drawDate: string) {
@@ -61,30 +94,35 @@ const FILTER_TABS = [
 ];
 
 export function Home() {
-  const { data: campaigns, isLoading } = useListCampaigns();
+  const { data: allCampaigns, isLoading } = useListCampaigns();
   const [activeFilter, setActiveFilter] = useState("all");
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [sellingEnd] = useState<number>(() => getSellingEnd());
+  const [countdown, setCountdown] = useState(() => getSellingRemaining(sellingEnd));
   const [heroVisible, setHeroVisible] = useState(false);
 
-  // Default the hero to the first campaign once data loads.
+  // Filter campaigns to only allowed models
+  const campaigns = (allCampaigns ?? []).filter((c) => ALLOWED_MODELS.includes(c.vehicleModel));
+
   useEffect(() => {
-    if (selectedId == null && campaigns && campaigns.length > 0) {
+    if (selectedId == null && campaigns.length > 0) {
       setSelectedId(campaigns[0].id);
     }
   }, [campaigns, selectedId]);
 
-  const campaign = campaigns?.find((c) => c.id === selectedId) ?? campaigns?.[0];
+  const campaign = campaigns.find((c) => c.id === selectedId) ?? campaigns[0];
 
   useEffect(() => {
-    if (!campaign?.drawDate) return;
-    const update = () => setCountdown(getTimeRemaining(campaign.drawDate));
-    update();
-    const timer = setInterval(update, 1000);
-    return () => clearInterval(timer);
-  }, [campaign?.drawDate]);
+    if (!campaign?.drawDate) {
+      // Use 15-day countdown instead of drawDate
+      const update = () => setCountdown(getSellingRemaining(sellingEnd));
+      update();
+      const timer = setInterval(update, 1000);
+      return () => clearInterval(timer);
+    }
+    return;
+  }, [campaign?.drawDate, sellingEnd]);
 
-  // Trigger hero entrance
   useEffect(() => {
     if (!isLoading) setTimeout(() => setHeroVisible(true), 50);
   }, [isLoading]);
@@ -156,18 +194,24 @@ export function Home() {
 
                   {/* Bottom info */}
                   <div className="absolute bottom-0 left-0 right-0 p-4">
-                    <p className="text-[9px] font-bold text-white/50 uppercase tracking-[0.2em] mb-2">
-                      Time Remaining
-                    </p>
-                    <div className="flex items-end gap-2">
-                      <CountdownBlock value={countdown.days} label="Days" />
-                      <span className="text-white/60 font-bold text-lg pb-4">:</span>
-                      <CountdownBlock value={countdown.hours} label="Hrs" />
-                      <span className="text-white/60 font-bold text-lg pb-4">:</span>
-                      <CountdownBlock value={countdown.minutes} label="Min" />
-                      <span className="text-white/60 font-bold text-lg pb-4">:</span>
-                      <CountdownBlock value={countdown.seconds} label="Sec" />
-                    </div>
+{countdown.expired ? (
+  <div className="flex items-center gap-2 bg-black/55 backdrop-blur-sm rounded-xl px-3 py-2.5">
+    <Ban className="w-5 h-5 text-white shrink-0" />
+    <p className="text-sm font-extrabold text-white leading-tight">
+      Tickets selling days are over
+    </p>
+  </div>
+) : (
+  <div className="flex items-end gap-2">
+    <CountdownBlock value={countdown.days} label="Days" />
+    <span className="text-white/60 font-bold text-lg pb-4">:</span>
+    <CountdownBlock value={countdown.hours} label="Hrs" />
+    <span className="text-white/60 font-bold text-lg pb-4">:</span>
+    <CountdownBlock value={countdown.minutes} label="Min" />
+    <span className="text-white/60 font-bold text-lg pb-4">:</span>
+    <CountdownBlock value={countdown.seconds} label="Sec" />
+  </div>
+)}
                   </div>
                 </div>
 
