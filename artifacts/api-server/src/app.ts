@@ -4,6 +4,7 @@ import pinoHttp from "pino-http";
 import router from "./routes";
 import telegramRouter from "./routes/telegram";
 import { logger } from "./lib/logger";
+import { pool } from "@workspace/db";
 
 const app: Express = express();
 

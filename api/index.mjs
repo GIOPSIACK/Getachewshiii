@@ -32967,15 +32967,15 @@ var require_pg_pool = __commonJS({
       });
       return { callback: cb, result };
     }
-    function makeIdleListener(pool3, client) {
+    function makeIdleListener(pool2, client) {
       return function idleListener(err) {
         err.client = client;
         client.removeListener("error", idleListener);
         client.on("error", () => {
-          pool3.log("additional client error after disconnection due to error", err);
+          pool2.log("additional client error after disconnection due to error", err);
         });
-        pool3._remove(client);
-        pool3.emit("error", err, client);
+        pool2._remove(client);
+        pool2.emit("error", err, client);
       };
     }
     var Pool4 = class extends EventEmitter {
@@ -62697,13 +62697,13 @@ var registrationsTable = pgTable("registrations", {
 var { Pool: Pool3 } = esm_default;
 var connectionString = process.env.DATABASE_URL;
 var usesPooler = Boolean(connectionString) && (/[?&]pgbouncer=true/.test(connectionString) || connectionString.includes(":6543"));
-var pool2 = new Pool3({
+var pool = new Pool3({
   connectionString,
   max: Number(process.env.PG_POOL_MAX ?? 10),
   ...usesPooler ? { prepare: false } : {},
   ...usesPooler ? { ssl: { rejectUnauthorized: false } } : {}
 });
-var db = drizzle(pool2, { schema: schema_exports });
+var db = drizzle(pool, { schema: schema_exports });
 
 // src/routes/campaigns.ts
 var router2 = (0, import_express2.Router)();
