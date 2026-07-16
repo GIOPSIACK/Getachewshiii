@@ -4,7 +4,17 @@ import pinoHttp from "pino-http";
 import router from "./routes";
 import telegramRouter from "./routes/telegram";
 import { logger } from "./lib/logger";
-import { pool } from "@workspace/db";
+
+app.get("/api/ping", (_req, res) => {
+  res.json({
+    alive: true,
+    databaseUrlPresent: Boolean(process.env.DATABASE_URL),
+    databaseUrlHost: process.env.DATABASE_URL
+      ? process.env.DATABASE_URL.split("@")[1]?.split("/")[0]
+      : null,
+    nodeEnv: process.env.NODE_ENV,
+  });
+});
 
 const app: Express = express();
 

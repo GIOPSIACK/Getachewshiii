@@ -32967,15 +32967,15 @@ var require_pg_pool = __commonJS({
       });
       return { callback: cb, result };
     }
-    function makeIdleListener(pool2, client) {
+    function makeIdleListener(pool3, client) {
       return function idleListener(err) {
         err.client = client;
         client.removeListener("error", idleListener);
         client.on("error", () => {
-          pool2.log("additional client error after disconnection due to error", err);
+          pool3.log("additional client error after disconnection due to error", err);
         });
-        pool2._remove(client);
-        pool2.emit("error", err, client);
+        pool3._remove(client);
+        pool3.emit("error", err, client);
       };
     }
     var Pool4 = class extends EventEmitter {
@@ -62702,13 +62702,13 @@ if (!process.env.DATABASE_URL) {
 }
 var connectionString = process.env.DATABASE_URL;
 var usesPooler = /[?&]pgbouncer=true/.test(connectionString) || connectionString.includes(":6543");
-var pool = new Pool3({
+var pool2 = new Pool3({
   connectionString,
   max: Number(process.env.PG_POOL_MAX ?? 10),
   ...usesPooler ? { prepare: false } : {},
   ...usesPooler ? { ssl: { rejectUnauthorized: false } } : {}
 });
-var db = drizzle(pool, { schema: schema_exports });
+var db = drizzle(pool2, { schema: schema_exports });
 
 // src/routes/campaigns.ts
 var router2 = (0, import_express2.Router)();
@@ -69859,6 +69859,14 @@ var logger = (0, import_pino.default)({
 });
 
 // src/app.ts
+app.get("/api/ping", (_req, res) => {
+  res.json({
+    alive: true,
+    databaseUrlPresent: Boolean(process.env.DATABASE_URL),
+    databaseUrlHost: process.env.DATABASE_URL ? process.env.DATABASE_URL.split("@")[1]?.split("/")[0] : null,
+    nodeEnv: process.env.NODE_ENV
+  });
+});
 var app = (0, import_express8.default)();
 app.use(
   (0, import_pino_http.default)({
