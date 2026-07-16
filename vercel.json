@@ -1,7 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
-  "nodeVersion": "22.x",
   "installCommand": "pnpm install --frozen-lockfile",
   "buildCommand": "pnpm --filter @workspace/gech-ev run build",
   "outputDirectory": "artifacts/gech-ev/dist",
