@@ -16,7 +16,7 @@ await build({
   platform: "node",
   bundle: true,
   format: "esm",
-  outfile: path.resolve(artifactDir, "api/server.mjs"),
+  outfile: path.resolve(artifactDir, "api/index.mjs"),
   outExtension: { ".js": ".mjs" },
   target: "node22",
   external: [

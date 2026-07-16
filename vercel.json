@@ -9,7 +9,7 @@
     { "source": "/((?!api/|telegram).*)", "destination": "/index.html" }
   ],
   "functions": {
-    "api/index.ts": { "maxDuration": 30 },
+    "api/index.mjs": { "maxDuration": 30 },
     "api/telegram.ts": { "maxDuration": 30 }
   }
 }
