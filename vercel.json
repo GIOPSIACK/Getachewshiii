@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
   "installCommand": "pnpm install --no-frozen-lockfile",
-  "buildCommand": "pnpm --filter @workspace/gech-ev run build",
+  "buildCommand": "node scripts/build-vercel-api.mjs && pnpm --filter @workspace/gech-ev run build",
   "outputDirectory": "artifacts/gech-ev/dist",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api" },
