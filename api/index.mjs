@@ -69865,14 +69865,6 @@ var logger = (0, import_pino.default)({
 
 // src/app.ts
 var app = (0, import_express8.default)();
-app.get("/api/ping", (_req, res) => {
-  res.json({
-    alive: true,
-    databaseUrlPresent: Boolean(process.env.DATABASE_URL),
-    databaseUrlHost: process.env.DATABASE_URL ? process.env.DATABASE_URL.split("@")[1]?.split("/")[0] : null,
-    nodeEnv: process.env.NODE_ENV
-  });
-});
 app.use(
   (0, import_pino_http.default)({
     logger,
@@ -69897,19 +69889,6 @@ app.use(import_express8.default.json());
 app.use(import_express8.default.urlencoded({ extended: true }));
 app.use("/api", routes_default);
 app.use("/telegram", telegram_default);
-app.get("/api/debug-db", async (_req, res) => {
-  try {
-    const result = await pool.query("select 1 as ok");
-    res.json({ ok: true, row: result.rows[0] });
-  } catch (err) {
-    res.status(500).json({
-      ok: false,
-      error: err instanceof Error ? err.message : String(err),
-      stack: err instanceof Error ? err.stack : void 0,
-      databaseUrlPresent: Boolean(process.env.DATABASE_URL)
-    });
-  }
-});
 var app_default = app;
 
 // src/index.ts
