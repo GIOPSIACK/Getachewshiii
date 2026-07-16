@@ -14,7 +14,7 @@ const repoRoot = path.resolve(artifactDir, "..");
 globalThis.require = createRequire(import.meta.url);
 
 await build({
-  entryPoints: [path.resolve(artifactDir, "artifacts/api-server/src/app.ts")],
+  entryPoints: [path.resolve(repoRoot, "artifacts/api-server/src/app.ts")],
   platform: "node",
   bundle: true,
   format: "esm",

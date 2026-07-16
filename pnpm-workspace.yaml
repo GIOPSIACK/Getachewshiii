@@ -95,7 +95,7 @@ overrides:
   "esbuild>@esbuild/sunos-x64": "-"
   "esbuild>@esbuild/win32-arm64": "-"
   "esbuild>@esbuild/win32-ia32": "-"
-  "esbuild>@esbuild/win32-x64": "-"
+  # "esbuild>@esbuild/win32-x64": "-"  # needed so `node scripts/build-vercel-api.mjs` runs on Windows dev machines
   "esbuild>@esbuild/aix-ppc64": '-'
   "esbuild>@esbuild/android-arm": '-'
   "esbuild>@esbuild/android-arm64": '-'
