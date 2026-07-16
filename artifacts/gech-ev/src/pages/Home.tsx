@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useListCampaigns } from "@workspace/api-client-react";
 import { Link } from "wouter";
-import { Users, Trophy, Ticket, Star, Flame, TrendingUp, Zap } from "lucide-react";
+import { Users, Trophy, Ticket, Star, Flame, TrendingUp, Zap, Check } from "lucide-react";
 import bydImage from "@/assets/byd-yuan-up.jpg";
 import glogoSrc from "@/assets/glogo.jpg";
 import greenPatternSrc from "@/assets/dark-green-abstract-pattern.jpg";
@@ -14,6 +14,17 @@ import ticketIcon from "@/assets/icons/ticket.svg";
 import soldIcon from "@/assets/icons/sold.svg";
 import goTipIcon from "@/assets/icons/go-tip.svg";
 import { HomeSkeleton } from "@/components/ui/skeleton";
+
+// Local hero images keyed by vehicle model. Drop in real JPGs for the new
+// vehicles (e.g. src/assets/byd-yuan-plus.jpg) and add them here; the API
+// imageUrl takes precedence when present.
+const VEHICLE_IMAGES: Record<string, string> = {
+  "BYD Yuan Up": bydImage,
+};
+
+function vehicleImage(campaign: { imageUrl?: string | null; vehicleModel: string }): string {
+  return campaign.imageUrl || VEHICLE_IMAGES[campaign.vehicleModel] || bydImage;
+}
 
 function getTimeRemaining(drawDate: string) {
   const total = new Date(drawDate).getTime() - Date.now();
@@ -48,10 +59,18 @@ const FILTER_TABS = [
 export function Home() {
   const { data: campaigns, isLoading } = useListCampaigns();
   const [activeFilter, setActiveFilter] = useState("all");
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   const [heroVisible, setHeroVisible] = useState(false);
 
-  const campaign = campaigns?.[0];
+  // Default the hero to the first campaign once data loads.
+  useEffect(() => {
+    if (selectedId == null && campaigns && campaigns.length > 0) {
+      setSelectedId(campaigns[0].id);
+    }
+  }, [campaigns, selectedId]);
+
+  const campaign = campaigns?.find((c) => c.id === selectedId) ?? campaigns?.[0];
 
   useEffect(() => {
     if (!campaign?.drawDate) return;
@@ -107,7 +126,7 @@ export function Home() {
                 {/* Image */}
                 <div className="relative w-full aspect-[16/9] bg-muted overflow-hidden">
                   <img
-                    src={campaign.imageUrl || bydImage}
+                    src={vehicleImage(campaign)}
                     alt={campaign.vehicleModel}
                     className="w-full h-full object-cover scale-110"
                   />
@@ -272,7 +291,7 @@ export function Home() {
             </div>
           </div>
 
-          {/* Active Lotteries */}
+          {/* Active Lotteries — tap a vehicle to feature it in the hero */}
           <div className="px-4 mb-2">
             <div className="flex justify-between items-center mb-3">
               <div className="flex items-center gap-2">
@@ -285,63 +304,78 @@ export function Home() {
                 </h3>
               </div>
               <span className="text-xs bg-muted text-muted-foreground font-semibold px-2.5 py-1 rounded-full">
-                {campaigns && campaigns.length > 1 ? `${campaigns.length - 1}` : "0"} available
+                {campaigns ? `${campaigns.length}` : "0"} available
               </span>
             </div>
 
-            {!campaigns || campaigns.length <= 1 ? (
+            {!campaigns || campaigns.length === 0 ? (
               <div className="bg-card border border-dashed border-border/60 rounded-2xl p-8 flex flex-col items-center text-center">
                 <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mb-3">
                   <Ticket className="w-7 h-7 text-muted-foreground" />
                 </div>
-                <p className="font-bold text-sm text-foreground">No other active lotteries</p>
+                <p className="font-bold text-sm text-foreground">No active lotteries</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Add another lottery from admin panel to show it here.
+                  Add a lottery from the admin panel to show it here.
                 </p>
               </div>
             ) : (
               <div className="flex flex-col gap-3">
-                {campaigns.slice(1).map((c, i) => (
-                  <Link
-                    key={c.id}
-                    href={`/buy/${c.id}`}
-                    className="bg-card border border-border/60 rounded-2xl p-4 flex items-center gap-3 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 animate-in fade-in slide-in-from-bottom-2"
-                    style={{ animationDelay: `${i * 80}ms`, animationFillMode: "both" }}
-                  >
-                    <div className="w-14 h-14 rounded-xl bg-muted overflow-hidden shrink-0">
-                      <img
-                        src={c.imageUrl || bydImage}
-                        alt={c.vehicleModel}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p
-                        style={{ fontFamily: "'Highstories', sans-serif", fontSize: "28px", letterSpacing: "0.05em" }}
-                        className="font-bold truncate"
-                      >
-                        {c.vehicleModel}
-                      </p>
-                      <p className="text-xs text-primary font-semibold mt-0.5">
-                        {c.ticketPrice.toLocaleString()} Birr / ticket
-                      </p>
-                      <div className="mt-1.5 h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-primary rounded-full"
-                          style={{ width: `${Math.round((c.soldSlots / c.totalSlots) * 100)}%` }}
+                {campaigns.map((c, i) => {
+                  const isSelected = c.id === selectedId;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setSelectedId(c.id)}
+                      aria-pressed={isSelected}
+                      className={`text-left bg-card border rounded-2xl p-4 flex items-center gap-3 shadow-sm transition-all duration-200 animate-in fade-in slide-in-from-bottom-2 ${
+                        isSelected
+                          ? "border-primary ring-2 ring-primary/40 -translate-y-0.5"
+                          : "border-border/60 hover:shadow-md hover:-translate-y-0.5"
+                      }`}
+                      style={{ animationDelay: `${i * 80}ms`, animationFillMode: "both" }}
+                    >
+                      <div className="w-14 h-14 rounded-xl bg-muted overflow-hidden shrink-0">
+                        <img
+                          src={vehicleImage(c)}
+                          alt={c.vehicleModel}
+                          className="w-full h-full object-cover"
                         />
                       </div>
-                    </div>
-                    <div className="flex flex-col items-end gap-1 shrink-0">
-                      <span className="text-[10px] font-extrabold text-primary bg-primary/10 px-2.5 py-1 rounded-full">
-                        LIVE
-                      </span>
-                      <span className="text-[10px] text-muted-foreground font-medium">
-                        {c.soldSlots}/{c.totalSlots}
-                      </span>
-                    </div>
-                  </Link>
-                ))}
+                      <div className="flex-1 min-w-0">
+                        <p
+                          style={{ fontFamily: "'Highstories', sans-serif", fontSize: "28px", letterSpacing: "0.05em" }}
+                          className="font-bold truncate"
+                        >
+                          {c.vehicleModel}
+                        </p>
+                        <p className="text-xs text-primary font-semibold mt-0.5">
+                          {c.ticketPrice.toLocaleString()} Birr / ticket
+                        </p>
+                        <div className="mt-1.5 h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-primary rounded-full"
+                            style={{ width: `${Math.round((c.soldSlots / c.totalSlots) * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        {isSelected ? (
+                          <span className="text-[10px] font-extrabold text-primary bg-primary px-2.5 py-1 rounded-full flex items-center gap-1">
+                            <Check className="w-3 h-3" /> Selected
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-extrabold text-primary bg-primary/10 px-2.5 py-1 rounded-full">
+                            LIVE
+                          </span>
+                        )}
+                        <span className="text-[10px] text-muted-foreground font-medium">
+                          {c.soldSlots}/{c.totalSlots}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
