@@ -21,6 +21,7 @@ export const pool = new Pool({
   connectionString,
   max: Number(process.env.PG_POOL_MAX ?? 10),
   ...(usesPooler ? { prepare: false } : {}),
+  ...(usesPooler ? { ssl: { rejectUnauthorized: false } } : {}),
 });
 
 export const db = drizzle(pool, { schema });
