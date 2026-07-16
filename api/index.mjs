@@ -69473,7 +69473,17 @@ var openai_default = OpenAI;
 
 // src/routes/chat.ts
 var router4 = (0, import_express4.Router)();
-var openai = new openai_default({ apiKey: process.env.OPENAI_API_KEY });
+var openai = null;
+function getOpenAI() {
+  if (!openai) {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new Error("OPENAI_API_KEY is not set");
+    }
+    openai = new openai_default({ apiKey });
+  }
+  return openai;
+}
 var SYSTEM_PROMPT = `You are the friendly support assistant for "Gech EV Makina Ekub", an Ethiopian EV lottery (ekub) app.
 Explain how the app works when asked:
 - Users browse active lotteries ("Ekub" draws) for electric vehicles (e.g. BYD Yuan Up, BYD Dolphin, BYD Seagull).
@@ -69493,7 +69503,7 @@ router4.post("/chat/messages", async (req, res) => {
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
   try {
-    const stream = await openai.chat.completions.create({
+    const stream = await getOpenAI().chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
