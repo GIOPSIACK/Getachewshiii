@@ -31824,11 +31824,11 @@ var require_connection = __commonJS({
           }
         });
       }
-      connect(port2, host) {
+      connect(port, host) {
         const self = this;
         this._connecting = true;
         this.stream.setNoDelay(true);
-        this.stream.connect(port2, host);
+        this.stream.connect(port, host);
         this.stream.once("connect", function() {
           if (self._keepAlive) {
             self.stream.setKeepAlive(true, self._keepAliveInitialDelayMillis);
@@ -34893,12 +34893,12 @@ var require_url_state_machine = __commonJS({
         this.buffer += cStr;
       } else if (isNaN(c2) || c2 === 47 || c2 === 63 || c2 === 35 || isSpecial(this.url) && c2 === 92 || this.stateOverride) {
         if (this.buffer !== "") {
-          const port2 = parseInt(this.buffer);
-          if (port2 > Math.pow(2, 16) - 1) {
+          const port = parseInt(this.buffer);
+          if (port > Math.pow(2, 16) - 1) {
             this.parseError = true;
             return failure;
           }
-          this.url.port = port2 === defaultPort(this.url.scheme) ? null : port2;
+          this.url.port = port === defaultPort(this.url.scheme) ? null : port;
           this.buffer = "";
         }
         if (this.stateOverride) {
@@ -39988,8 +39988,8 @@ var require_node_domexception = __commonJS({
   "../../node_modules/.pnpm/node-domexception@1.0.0/node_modules/node-domexception/index.js"(exports, module) {
     if (!globalThis.DOMException) {
       try {
-        const { MessageChannel } = __require("worker_threads"), port2 = new MessageChannel().port1, ab = new ArrayBuffer();
-        port2.postMessage(ab, [ab, ab]);
+        const { MessageChannel } = __require("worker_threads"), port = new MessageChannel().port1, ab = new ArrayBuffer();
+        port.postMessage(ab, [ab, ab]);
       } catch (err) {
         err.constructor.name === "DOMException" && (globalThis.DOMException = err.constructor);
       }
@@ -69903,23 +69903,24 @@ app.get("/api/debug-db", async (_req, res) => {
 var app_default = app;
 
 // src/index.ts
-var rawPort = process.env["PORT"];
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided."
-  );
-}
-var port = Number(rawPort);
-if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
-}
-app_default.listen(port, (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
+var src_default = app_default;
+if (process.env["PORT"]) {
+  const rawPort = process.env["PORT"];
+  const port = Number(rawPort);
+  if (Number.isNaN(port) || port <= 0) {
+    throw new Error(`Invalid PORT value: "${rawPort}"`);
   }
-  logger.info({ port }, "Server listening");
-});
+  app_default.listen(port, (err) => {
+    if (err) {
+      logger.error({ err }, "Error listening on port");
+      process.exit(1);
+    }
+    logger.info({ port }, "Server listening");
+  });
+}
+export {
+  src_default as default
+};
 /*! Bundled license information:
 
 depd/index.js:
