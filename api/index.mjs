@@ -62739,6 +62739,24 @@ var campaigns_default = router2;
 
 // src/routes/tickets.ts
 var import_express3 = __toESM(require_express2(), 1);
+
+// src/lib/adminAuth.ts
+function requireAdmin(req, res, next) {
+  const expected = process.env.ADMIN_PASSWORD;
+  if (!expected) {
+    res.status(403).json({ error: "Admin access is not configured" });
+    return;
+  }
+  const header = req.headers["authorization"];
+  const token = header?.startsWith("Bearer ") ? header.slice(7) : null;
+  if (!token || token !== expected) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  next();
+}
+
+// src/routes/tickets.ts
 var router3 = (0, import_express3.Router)();
 async function shapeTicket(ticket) {
   const [campaign] = await db.select().from(campaignsTable).where(eq(campaignsTable.id, ticket.campaignId));
@@ -62830,7 +62848,7 @@ router3.post("/tickets", async (req, res) => {
   const shaped = await shapeTicket(ticket);
   res.status(201).json(CreateTicketResponse.parse(shaped));
 });
-router3.patch("/tickets/:id/status", async (req, res) => {
+router3.patch("/tickets/:id/status", requireAdmin, async (req, res) => {
   const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const params = UpdateTicketStatusParams.safeParse({ id: rawId });
   if (!params.success) {
@@ -62859,7 +62877,7 @@ router3.post("/receipts/upload", async (req, res) => {
   const dataUri = `data:${parsed.data.mimeType};base64,${parsed.data.imageData}`;
   res.json(UploadReceiptResponse.parse({ url: dataUri }));
 });
-router3.get("/admin/tickets", async (req, res) => {
+router3.get("/admin/tickets", requireAdmin, async (req, res) => {
   const parsed = AdminListTicketsQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
