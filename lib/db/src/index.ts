@@ -8,8 +8,9 @@ const connectionString = process.env.DATABASE_URL;
 // Supabase "Transaction" pooler uses port 6543 and ?pgbouncer=true.
 // In that mode Postgres prepared statements must be disabled.
 const usesPooler =
-  /[?&]pgbouncer=true/.test(connectionString) ||
-  connectionString.includes(":6543");
+  Boolean(connectionString) &&
+  (/[?&]pgbouncer=true/.test(connectionString) ||
+    connectionString.includes(":6543"));
 
 export const pool = new Pool({
   connectionString,

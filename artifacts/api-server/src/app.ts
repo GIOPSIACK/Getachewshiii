@@ -5,6 +5,8 @@ import router from "./routes";
 import telegramRouter from "./routes/telegram";
 import { logger } from "./lib/logger";
 
+const app: Express = express();
+
 app.get("/api/ping", (_req, res) => {
   res.json({
     alive: true,
@@ -15,8 +17,6 @@ app.get("/api/ping", (_req, res) => {
     nodeEnv: process.env.NODE_ENV,
   });
 });
-
-const app: Express = express();
 
 app.use(
   pinoHttp({

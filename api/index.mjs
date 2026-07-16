@@ -62696,7 +62696,7 @@ var registrationsTable = pgTable("registrations", {
 // ../../lib/db/src/index.ts
 var { Pool: Pool3 } = esm_default;
 var connectionString = process.env.DATABASE_URL;
-var usesPooler = /[?&]pgbouncer=true/.test(connectionString) || connectionString.includes(":6543");
+var usesPooler = Boolean(connectionString) && (/[?&]pgbouncer=true/.test(connectionString) || connectionString.includes(":6543"));
 var pool2 = new Pool3({
   connectionString,
   max: Number(process.env.PG_POOL_MAX ?? 10),
@@ -69864,6 +69864,7 @@ var logger = (0, import_pino.default)({
 });
 
 // src/app.ts
+var app = (0, import_express8.default)();
 app.get("/api/ping", (_req, res) => {
   res.json({
     alive: true,
@@ -69872,7 +69873,6 @@ app.get("/api/ping", (_req, res) => {
     nodeEnv: process.env.NODE_ENV
   });
 });
-var app = (0, import_express8.default)();
 app.use(
   (0, import_pino_http.default)({
     logger,
