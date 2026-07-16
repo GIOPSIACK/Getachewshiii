@@ -1,20 +1,15 @@
-// Telegram bot webhook — Vercel Serverless Function at /api/telegram.
-// Wire it up with:
-//   https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<your-domain>/api/telegram
-// (If TELEGRAM_WEBHOOK_SECRET is set, also pass header
-//  X-Telegram-Bot-Api-Secret-Token: <secret> when calling setWebhook.)
-//
-// It reuses the existing Drizzle/Postgres layer (@workspace/db), so the bot
-// writes into the very same `tickets` / `registrations` tables the web app
-// uses. Conversation state is persisted in registrations.bot_state because
-// serverless functions have no memory between invocations.
+import { Router, type IRouter } from "express";
 import { db, registrationsTable, campaignsTable, ticketsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-if (!TOKEN) throw new Error("TELEGRAM_BOT_TOKEN is required");
+if (!TOKEN) {
+  // Don't crash the whole API if the bot token isn't set yet.
+  console.warn("TELEGRAM_BOT_TOKEN not set — /telegram webhook disabled");
+}
+
 const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET;
-const TG_API = `https://api.telegram.org/bot${TOKEN}`;
+const TG_API = TOKEN ? `https://api.telegram.org/bot${TOKEN}` : "";
 
 type Step = "idle" | "await_lucky" | "await_qty" | "await_method" | "await_sender" | "confirm";
 interface BotState {
@@ -35,47 +30,6 @@ async function tg(method: string, body: Record<string, unknown>) {
   return res.json();
 }
 
-function chatIdOf(u: any): number {
-  return (
-    u?.message?.chat?.id ??
-    u?.callback_query?.message?.chat?.id ??
-    u?.edited_message?.chat?.id
-  );
-}
-
-async function getReg(telegramId: string) {
-  const [row] = await db
-    .select()
-    .from(registrationsTable)
-    .where(eq(registrationsTable.telegramId, telegramId));
-  return row;
-}
-
-async function setState(telegramId: string, state: BotState) {
-  await db
-    .update(registrationsTable)
-    .set({ botState: state as any, updatedAt: new Date() })
-    .where(eq(registrationsTable.telegramId, telegramId));
-}
-
-async function ensureReg(u: any) {
-  const from = u?.message?.from ?? u?.callback_query?.from;
-  const telegramId = String(from.id);
-  await db
-    .insert(registrationsTable)
-    .values({
-      telegramId,
-      firstName: from.first_name,
-      username: from.username,
-      botState: { step: "idle" },
-    })
-    .onConflictDoUpdate({
-      target: registrationsTable.telegramId,
-      set: { firstName: from.first_name, username: from.username, updatedAt: new Date() },
-    });
-  return telegramId;
-}
-
 const CONTACT_KEYBOARD = {
   keyboard: [
     [{ text: "📱 Share my phone number", request_contact: true }],
@@ -83,6 +37,31 @@ const CONTACT_KEYBOARD = {
   ],
   resize_keyboard: true,
 };
+
+const router: IRouter = Router();
+
+router.get("/", (_req, res) => {
+  res.json({ ok: true, bot: TOKEN ? "configured" : "token missing" });
+});
+
+router.post("/", async (req, res): Promise<void> => {
+  if (WEBHOOK_SECRET && req.headers["x-telegram-bot-api-secret-token"] !== WEBHOOK_SECRET) {
+    res.status(401).end();
+    return;
+  }
+  try {
+    await handleUpdate(req.body ?? {});
+  } catch (e) {
+    console.error("telegram webhook error:", e);
+  }
+  res.status(200).json({ ok: true });
+});
+
+export default router;
+
+// ---------------------------------------------------------------------------
+// Below: bot logic (shared with the rest of the app via @workspace/db).
+// ---------------------------------------------------------------------------
 
 async function sendMenu(chatId: number) {
   await tg("sendMessage", {
@@ -99,6 +78,39 @@ async function askContact(chatId: number) {
     text: "Please share your phone number to register 👇",
     reply_markup: CONTACT_KEYBOARD,
   });
+}
+
+async function getReg(telegramId: string) {
+  const [row] = await db
+    .select()
+    .from(registrationsTable)
+    .where(eq(registrationsTable.telegramId, telegramId));
+  return row;
+}
+
+async function setState(telegramId: string, state: BotState) {
+  await db
+    .update(registrationsTable)
+    .set({ botState: state as never, updatedAt: new Date() })
+    .where(eq(registrationsTable.telegramId, telegramId));
+}
+
+async function ensureReg(u: { message?: any; callback_query?: any }) {
+  const from = u.message?.from ?? u.callback_query?.from;
+  const telegramId = String(from.id);
+  await db
+    .insert(registrationsTable)
+    .values({
+      telegramId,
+      firstName: from.first_name,
+      username: from.username,
+      botState: { step: "idle" },
+    })
+    .onConflictDoUpdate({
+      target: registrationsTable.telegramId,
+      set: { firstName: from.first_name, username: from.username, updatedAt: new Date() },
+    });
+  return telegramId;
 }
 
 async function listCampaigns(chatId: number) {
@@ -189,7 +201,6 @@ async function confirmPurchase(chatId: number, telegramId: string) {
 }
 
 async function handleUpdate(u: any) {
-  // --- Inline button callbacks (lottery pick / confirm / cancel) ---
   if (u.callback_query) {
     const cb = u.callback_query;
     const chatId = cb.message.chat.id;
@@ -213,7 +224,6 @@ async function handleUpdate(u: any) {
     return;
   }
 
-  // --- Phone number shared via contact button ---
   if (u.message?.contact) {
     const chatId = u.message.chat.id;
     const telegramId = String(u.message.from.id);
@@ -232,9 +242,9 @@ async function handleUpdate(u: any) {
   }
 
   const text = (u.message?.text ?? "").trim();
-  const chatId = chatIdOf(u);
+  const chatId = u.message?.chat?.id;
   const telegramId = String(u.message?.from?.id ?? u.callback_query?.from?.id);
-  if (!text) return;
+  if (!text || !chatId) return;
 
   if (text === "/start") {
     await ensureReg(u);
@@ -257,8 +267,8 @@ async function handleUpdate(u: any) {
   if (step === "await_lucky") {
     const nums = text
       .split(",")
-      .map((s) => parseInt(s.trim(), 10))
-      .filter((n) => !isNaN(n));
+      .map((s: string) => parseInt(s.trim(), 10))
+      .filter((n: number) => !isNaN(n));
     if (nums.length === 0) {
       await tg("sendMessage", { chat_id: chatId, text: "Please send numbers like 3,7,12" });
       return;
@@ -294,7 +304,7 @@ async function handleUpdate(u: any) {
       return;
     }
     const state = reg!.botState as BotState;
-    await setState(telegramId, { ...state, step: "await_sender", paymentMethod: method as any });
+    await setState(telegramId, { ...state, step: "await_sender", paymentMethod: method as "telebirr" | "cbe" });
     await tg("sendMessage", {
       chat_id: chatId,
       text: "Send your payment sender account number:",
@@ -338,21 +348,4 @@ async function handleUpdate(u: any) {
     chat_id: chatId,
     text: "Use /campaigns or /buy. Share your phone first if you haven't.",
   });
-}
-
-export default async function handler(req: any, res: any) {
-  if (req.method !== "POST") {
-    res.status(200).end();
-    return;
-  }
-  if (WEBHOOK_SECRET && req.headers["x-telegram-bot-api-secret-token"] !== WEBHOOK_SECRET) {
-    res.status(401).end();
-    return;
-  }
-  try {
-    await handleUpdate(req.body ?? {});
-  } catch (e) {
-    console.error("telegram webhook error:", e);
-  }
-  res.status(200).json({ ok: true });
 }
