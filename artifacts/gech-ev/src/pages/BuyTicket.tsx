@@ -7,6 +7,11 @@ import { cn } from "@/lib/utils";
 import glogoSrc from "@/assets/glogo.jpg";
 import numbersPatternBg from "@/assets/green-pattern-numbers-bg.jfif";
 
+const MODEL_PRICES: Record<string, number> = {
+  "BYD Yuan Plus": 3000,
+  "Sinotruk HOWO 371": 7000,
+};
+
 const TOTAL_LUCKY_NUMBERS = 5000;
 
 export function BuyTicket() {
@@ -51,6 +56,8 @@ export function BuyTicket() {
     );
   }
 
+  const price = MODEL_PRICES[campaign.vehicleModel] ?? campaign.ticketPrice;
+
   const isComplete = luckyNumbers.length === 6;
 
   return (
@@ -83,7 +90,7 @@ export function BuyTicket() {
           </h2>
           <div className="flex items-center justify-between">
             <div className="bg-white rounded-2xl shadow-sm px-4 py-2 text-2xl font-extrabold text-foreground">
-              {quantity} <span className="text-sm font-medium text-muted-foreground ml-1">x {campaign.ticketPrice.toLocaleString()} Birr</span>
+              {quantity} <span className="text-sm font-medium text-muted-foreground ml-1">x {price.toLocaleString()} Birr</span>
             </div>
             
             <div className="flex items-center gap-4 bg-muted p-1.5 rounded-full">
@@ -224,7 +231,7 @@ export function BuyTicket() {
         <div className="flex items-center justify-between mb-4">
           <div className="text-sm font-medium text-muted-foreground">Total Price</div>
           <div className="text-2xl font-extrabold text-foreground">
-            {(quantity * campaign.ticketPrice).toLocaleString()} <span className="text-sm">Birr</span>
+            {(quantity * price).toLocaleString()} <span className="text-sm">Birr</span>
           </div>
         </div>
         <button

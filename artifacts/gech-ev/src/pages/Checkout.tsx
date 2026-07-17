@@ -2,13 +2,20 @@ import { useState, useRef } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useGetCampaign, useUploadReceipt, useCreateTicket } from "@workspace/api-client-react";
 import { useCheckout } from "@/contexts/CheckoutContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { X, Upload, Trash2, AlertCircle, CreditCard, Smartphone, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const MODEL_PRICES: Record<string, number> = {
+  "BYD Yuan Plus": 3000,
+  "Sinotruk HOWO 371": 7000,
+};
 
 export function Checkout() {
   const [, params] = useRoute("/checkout/:campaignId");
   const [, setLocation] = useLocation();
   const { state, updateState } = useCheckout();
+  const { user } = useAuth();
 
   const campaignId = Number(params?.campaignId || state.campaignId);
   const { data: campaign, isLoading } = useGetCampaign(campaignId, {
@@ -21,7 +28,6 @@ export function Checkout() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
-  // Track direction for slide animation
   const [slideDir, setSlideDir] = useState<"left" | "right">("left");
   const [animKey, setAnimKey] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -34,7 +40,9 @@ export function Checkout() {
     );
   }
 
-  const totalPrice = campaign.ticketPrice * state.quantity;
+  const price = MODEL_PRICES[campaign.vehicleModel] ?? campaign.ticketPrice;
+  const totalPrice = price * state.quantity;
+  const authPhone = user?.phone || "";
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -68,7 +76,7 @@ export function Checkout() {
         data: {
           campaignId: campaign.id,
           buyerName: state.buyerName,
-          buyerPhone: state.buyerPhone,
+          buyerPhone: authPhone || state.buyerPhone,
           quantity: state.quantity,
           luckyNumbers: state.luckyNumbers,
           paymentMethod: state.paymentMethod,
@@ -85,7 +93,7 @@ export function Checkout() {
   };
 
   const canProceed = (() => {
-    if (step === 1) return state.buyerName.trim().length >= 2 && state.buyerPhone.trim().length >= 9;
+    if (step === 1) return state.buyerName.trim().length >= 2 && (authPhone || state.buyerPhone).trim().length >= 9;
     if (step === 2) return !!state.receiptImageUrl;
     return true;
   })();
@@ -198,7 +206,7 @@ export function Checkout() {
                 <div>
                   <p className="font-extrabold text-base text-foreground">{campaign.title}</p>
                   <p className="text-sm text-muted-foreground mt-0.5">
-                    {state.quantity} Ticket{state.quantity > 1 ? "s" : ""} × {campaign.ticketPrice.toLocaleString()} Birr
+                    {state.quantity} Ticket{state.quantity > 1 ? "s" : ""} × {price.toLocaleString()} Birr
                   </p>
                 </div>
                 <div className="bg-secondary text-foreground text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0 ml-3">
@@ -229,10 +237,11 @@ export function Checkout() {
               <label className="block text-sm font-semibold text-foreground mb-2">Phone Number</label>
               <input
                 type="tel"
-                value={state.buyerPhone}
-                onChange={(e) => updateState({ buyerPhone: e.target.value.replace(/\D/g, "").slice(0, 12) })}
+                value={authPhone || state.buyerPhone}
+                onChange={(e) => !authPhone && updateState({ buyerPhone: e.target.value.replace(/\D/g, "").slice(0, 12) })}
                 placeholder="251922990331"
-                className="w-full bg-card border border-border rounded-2xl px-4 py-4 focus:outline-none focus:ring-2 focus:ring-primary/30 text-base font-medium shadow-sm tracking-wider"
+                readOnly={!!authPhone}
+                className={`w-full bg-card border border-border rounded-2xl px-4 py-4 focus:outline-none focus:ring-2 focus:ring-primary/30 text-base font-medium shadow-sm tracking-wider ${authPhone ? "opacity-70 cursor-not-allowed" : ""}`}
               />
             </div>
           </div>
@@ -377,7 +386,7 @@ export function Checkout() {
               </div>
               <div className="divide-y divide-border">
                 <SummaryRow label="Lottery" value={campaign.title} />
-                <SummaryRow label="Tickets" value={`${state.quantity} × ${campaign.ticketPrice.toLocaleString()} Birr`} />
+                <SummaryRow label="Tickets" value={`${state.quantity} × ${price.toLocaleString()} Birr`} />
                 <div className="px-5 py-3.5 flex items-center justify-between">
                   <span className="text-sm text-muted-foreground font-medium">Your Numbers</span>
                   <div className="flex flex-wrap gap-1 justify-end max-w-[55%]">
@@ -389,7 +398,7 @@ export function Checkout() {
                   </div>
                 </div>
                 <SummaryRow label="Name" value={state.buyerName} />
-                <SummaryRow label="Phone" value={state.buyerPhone} />
+                <SummaryRow label="Phone" value={authPhone || state.buyerPhone} />
                 <SummaryRow
                   label="Bank"
                   value={state.paymentMethod === "cbe" ? "Commercial Bank of Ethiopia" : "Telebirr"}
