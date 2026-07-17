@@ -157,8 +157,8 @@ export function Home() {
             firstName = data.user?.firstName ?? null;
             if (data.user?.phone) {
               setUser({
-                telegramId,
-                firstName,
+                telegramId: telegramId!,
+                firstName: firstName!,
                 lastName: null,
                 phone: data.user.phone,
               });
