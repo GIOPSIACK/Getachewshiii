@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Phone } from "lucide-react";
 import glogoSrc from "@/assets/glogo.jpg";
@@ -6,13 +5,11 @@ import jesterSrc from "@/assets/jester.png";
 
 export function Profile() {
   const { user } = useAuth();
-
-
-  
+  const storedPhone = localStorage.getItem("gech_phone") || "";
+  const phone = user?.phone || storedPhone;
 
   return (
     <div className="flex flex-col flex-1 min-h-[100dvh]">
-      {/* Header */}
       <div className="px-6 py-3 flex justify-between items-center">
         <div className="flex items-center gap-2.5">
           <img src={glogoSrc} alt="Gech Ekub Logo" className="w-9 h-9 rounded-xl object-cover shadow-sm" />
@@ -23,14 +20,14 @@ export function Profile() {
       </div>
 
       <div className="flex-1 px-4 pt-4 pb-8">
-        {user?.phone ? (
+        {phone ? (
           <div className="bg-primary/10 border border-primary/20 rounded-[1.5rem] p-5 flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center shrink-0 shadow-sm">
               <Phone className="w-7 h-7 text-foreground" />
             </div>
             <div>
               <p className="text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wider">User Phone Number</p>
-              <p className="text-xl font-extrabold text-foreground tracking-wide">{user?.phone}</p>
+              <p className="text-xl font-extrabold text-foreground tracking-wide">{phone}</p>
             </div>
           </div>
         ) : (
@@ -44,15 +41,13 @@ export function Profile() {
         )}
       </div>
 
-      {/* Footer */}
       <div className="pb-24 text-center">
         <img src={jesterSrc} alt="Gech Ekub Jester" className="w-full block mb-3" />
         <p className="text-[11px] text-muted-foreground leading-relaxed px-4">
-          Â© 2026 Gech EV Makina Ekub. All Rights Reserved.{"\n"}
+          © 2026 Gech EV Makina Ekub. All Rights Reserved.{"\n"}
           <span className="text-primary font-medium">Designed & Developed by Gech Team</span>
         </p>
       </div>
     </div>
   );
 }
-

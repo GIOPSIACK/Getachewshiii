@@ -439,7 +439,7 @@ export function Home() {
                           {c.vehicleModel}
                         </p>
                         <p className="text-xs text-primary font-semibold mt-0.5">
-                          {c.ticketPrice.toLocaleString()} Birr / ticket
+                          {MODEL_PRICES[c.vehicleModel]?.toLocaleString() ?? c.ticketPrice.toLocaleString()} Birr / ticket
                         </p>
                         <div className="mt-1.5 h-1.5 w-full bg-muted rounded-full overflow-hidden">
                           <div
@@ -473,6 +473,7 @@ export function Home() {
     </div>
   );
 }
+
 
 
 
