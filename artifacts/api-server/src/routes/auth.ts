@@ -18,6 +18,23 @@ function parseInitData(initData: string): Map<string, string> {
   return params;
 }
 
+function buildDataCheckString(params: Map<string, string>): string {
+  const sortedEntries = Array.from(params.entries()).sort(([a], [b]) => a.localeCompare(b));
+  return sortedEntries.map(([k, v]) => `${k}=${v}`).join("\n");
+}
+
+function validateHash(initData: string, hash: string): boolean {
+  const params = parseInitData(initData);
+  params.delete("hash");
+
+  const dataCheckString = buildDataCheckString(params);
+
+  const secretKey = crypto.createHmac("sha256", "WebAppData").update(TOKEN!).digest();
+  const calculatedHash = crypto.createHmac("sha256", secretKey).update(dataCheckString).digest("hex");
+
+  return calculatedHash === hash;
+}
+
 router.post("/telegram", async (req, res): Promise<void> => {
   const { initData } = req.body || {};
   if (!initData || typeof initData !== "string") {
@@ -32,27 +49,21 @@ router.post("/telegram", async (req, res): Promise<void> => {
   try {
     const params = parseInitData(initData);
     const hash = params.get("hash");
+
     if (!hash) {
-      res.status(400).json({ error: "Missing hash in initData" });
+      res.status(400).json({ error: "Missing hash in initData", debug: { initDataLength: initData.length, initDataPreview: initData.slice(0, 100) } });
       return;
     }
 
-    params.delete("hash");
-
-    const sortedEntries = Array.from(params.entries()).sort(([a], [b]) => a.localeCompare(b));
-    const dataCheckString = sortedEntries.map(([k, v]) => `${k}=${v}`).join("\n");
-
-    const secretKey = crypto.createHmac("sha256", "WebAppData").update(TOKEN).digest();
-    const calculatedHash = crypto.createHmac("sha256", secretKey).update(dataCheckString).digest("hex");
-
-    if (calculatedHash !== hash) {
-      res.status(401).json({ error: "Invalid initData signature" });
+    const isValid = validateHash(initData, hash);
+    if (!isValid) {
+      res.status(401).json({ error: "Invalid initData signature", debug: { hash, initDataLength: initData.length } });
       return;
     }
 
     const userParam = params.get("user");
     if (!userParam) {
-      res.status(400).json({ error: "Missing user in initData" });
+      res.status(400).json({ error: "Missing user in initData", debug: { keys: Array.from(params.keys()) } });
       return;
     }
 
@@ -76,7 +87,7 @@ router.post("/telegram", async (req, res): Promise<void> => {
     res.json({ ok: true, user: { id: telegramId, firstName } });
   } catch (e) {
     console.error("auth/telegram error:", e);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Internal server error", details: String(e) });
   }
 });
 
