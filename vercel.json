@@ -1,10 +1,12 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
-  "buildCommand": "pnpm --filter @workspace/gech-ev run build",
+  "buildCommand": "pnpm run build && pnpm run copy-api",
   "outputDirectory": "artifacts/gech-ev/dist",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api" },
+    { "source": "/telegram", "destination": "/api" },
+    { "source": "/telegram/(.*)", "destination": "/api" },
     { "source": "/((?!api/|telegram).*)", "destination": "/index.html" }
   ],
   "functions": {

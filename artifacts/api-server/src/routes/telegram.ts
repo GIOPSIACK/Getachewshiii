@@ -4,12 +4,12 @@ import { eq } from "drizzle-orm";
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 if (!TOKEN) {
-  // Don't crash the whole API if the bot token isn't set yet.
   console.warn("TELEGRAM_BOT_TOKEN not set — /telegram webhook disabled");
 }
 
 const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET;
 const TG_API = TOKEN ? `https://api.telegram.org/bot${TOKEN}` : "";
+const WEBAPP_URL = process.env.TELEGRAM_WEBAPP_URL || "https://gech-ev-ekub-phi.vercel.app";
 
 type Step = "idle" | "await_lucky" | "await_qty" | "await_method" | "await_sender" | "confirm";
 interface BotState {
@@ -29,14 +29,6 @@ async function tg(method: string, body: Record<string, unknown>) {
   });
   return res.json();
 }
-
-const CONTACT_KEYBOARD = {
-  keyboard: [
-    [{ text: "📱 Share my phone number", request_contact: true }],
-    [{ text: "/campaigns" }, { text: "/buy" }],
-  ],
-  resize_keyboard: true,
-};
 
 const router: IRouter = Router();
 
@@ -58,27 +50,6 @@ router.post("/", async (req, res): Promise<void> => {
 });
 
 export default router;
-
-// ---------------------------------------------------------------------------
-// Below: bot logic (shared with the rest of the app via @workspace/db).
-// ---------------------------------------------------------------------------
-
-async function sendMenu(chatId: number) {
-  await tg("sendMessage", {
-    chat_id: chatId,
-    text:
-      "Welcome to Gech EV Makina Ekub! 🚗\nShare your phone number to register, then use /campaigns and /buy.",
-    reply_markup: CONTACT_KEYBOARD,
-  });
-}
-
-async function askContact(chatId: number) {
-  await tg("sendMessage", {
-    chat_id: chatId,
-    text: "Please share your phone number to register 👇",
-    reply_markup: CONTACT_KEYBOARD,
-  });
-}
 
 async function getReg(telegramId: string) {
   const [row] = await db
@@ -111,6 +82,34 @@ async function ensureReg(u: { message?: any; callback_query?: any }) {
       set: { firstName: from.first_name, username: from.username, updatedAt: new Date() },
     });
   return telegramId;
+}
+
+const CONTACT_KEYBOARD = {
+  keyboard: [[{ text: "📱 Share Phone Number", request_contact: true }]],
+  resize_keyboard: true,
+  one_time_keyboard: true,
+};
+
+const WEBAPP_INLINE_KEYBOARD = {
+  inline_keyboard: [
+    [{ text: "🎯 Open Lottery App", web_app: { url: WEBAPP_URL } }],
+  ],
+};
+
+async function askContact(chatId: number) {
+  await tg("sendMessage", {
+    chat_id: chatId,
+    text: "📱 Please share your phone number to continue:",
+    reply_markup: CONTACT_KEYBOARD,
+  });
+}
+
+async function sendWebAppButton(chatId: number) {
+  await tg("sendMessage", {
+    chat_id: chatId,
+    text: "✅ Number saved! Tap the button below to open the lottery app.",
+    reply_markup: WEBAPP_INLINE_KEYBOARD,
+  });
 }
 
 async function listCampaigns(chatId: number) {
@@ -162,7 +161,7 @@ async function confirmPurchase(chatId: number, telegramId: string) {
   const reg = await getReg(telegramId);
   const st = reg?.botState as BotState | undefined;
   if (!st || st.step !== "confirm" || !st.campaignId) {
-    await sendMenu(chatId);
+    await sendWebAppButton(chatId);
     return;
   }
   const [campaign] = await db
@@ -219,7 +218,7 @@ async function handleUpdate(u: any) {
       await confirmPurchase(chatId, telegramId);
     } else if (data === "cancel") {
       await setState(telegramId, { step: "idle" });
-      await sendMenu(chatId);
+      await sendWebAppButton(chatId);
     }
     return;
   }
@@ -237,7 +236,7 @@ async function handleUpdate(u: any) {
       text: `✅ Registered with phone ${phone}!`,
       reply_markup: { remove_keyboard: true },
     });
-    await sendMenu(chatId);
+    await sendWebAppButton(chatId);
     return;
   }
 
@@ -248,7 +247,12 @@ async function handleUpdate(u: any) {
 
   if (text === "/start") {
     await ensureReg(u);
-    await sendMenu(chatId);
+    const reg = await getReg(telegramId);
+    if (!reg?.phone) {
+      await askContact(chatId);
+    } else {
+      await sendWebAppButton(chatId);
+    }
     return;
   }
   if (text === "/campaigns") {

@@ -4,6 +4,8 @@ import campaignsRouter from "./campaigns";
 import ticketsRouter from "./tickets";
 import chatRouter from "./chat";
 import leaderboardRouter from "./leaderboard";
+import userRouter from "./user";
+import authRouter from "./auth";
 
 const router: IRouter = Router();
 
@@ -12,5 +14,7 @@ router.use(campaignsRouter);
 router.use(ticketsRouter);
 router.use(chatRouter);
 router.use(leaderboardRouter);
+router.use(userRouter);
+router.use(authRouter);
 
 export default router;

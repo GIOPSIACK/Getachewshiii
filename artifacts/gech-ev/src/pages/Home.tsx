@@ -17,16 +17,13 @@ import soldIcon from "@/assets/icons/sold.svg";
 import goTipIcon from "@/assets/icons/go-tip.svg";
 import { HomeSkeleton } from "@/components/ui/skeleton";
 
-const ALLOWED_MODELS = ["BYD Yuan Plus", "Sinotruk HOWO 371"] as const;
+const ALLOWED_MODELS: string[] = ["BYD Yuan Plus", "Sinotruk HOWO 371"];
 
 const MODEL_PRICES: Record<string, number> = {
   "BYD Yuan Plus": 3000,
   "Sinotruk HOWO 371": 7000,
 };
 
-// Local hero images keyed by vehicle model. Drop in real JPGs for the new
-// vehicles (e.g. src/assets/byd-yuan-plus.jpg) and add them here; the API
-// imageUrl takes precedence when present.
 const VEHICLE_IMAGES: Record<string, string> = {
   "BYD Yuan Up": bydImage,
   "BYD Yuan Plus": bydYuanPlusImage,
@@ -37,7 +34,6 @@ function vehicleImage(campaign: { imageUrl?: string | null; vehicleModel: string
   return campaign.imageUrl || VEHICLE_IMAGES[campaign.vehicleModel] || bydImage;
 }
 
-// 15-day countdown stored in sessionStorage
 const SELLING_END_KEY = "gech:sellingPeriodEnd";
 
 function getSellingEnd(): number {
@@ -93,6 +89,8 @@ const FILTER_TABS = [
   { id: "new", label: "New", icon: TrendingUp, bg: filterNewSrc },
 ];
 
+type AuthState = "loading" | "unauthenticated" | "no-phone" | "authenticated";
+
 export function Home() {
   const { data: allCampaigns, isLoading } = useListCampaigns();
   const [activeFilter, setActiveFilter] = useState("all");
@@ -101,8 +99,9 @@ export function Home() {
   const [countdown, setCountdown] = useState(() => getSellingRemaining(sellingEnd));
   const [heroVisible, setHeroVisible] = useState(false);
 
-  // Filter campaigns to only allowed models
-  const campaigns = (allCampaigns ?? []).filter((c) => ALLOWED_MODELS.includes(c.vehicleModel));
+  const [authState, setAuthState] = useState<AuthState>("loading");
+
+  const campaigns = (allCampaigns ?? []).filter((c) => ALLOWED_MODELS.includes(c.vehicleModel as string));
 
   useEffect(() => {
     if (selectedId == null && campaigns.length > 0) {
@@ -114,7 +113,6 @@ export function Home() {
 
   useEffect(() => {
     if (!campaign?.drawDate) {
-      // Use 15-day countdown instead of drawDate
       const update = () => setCountdown(getSellingRemaining(sellingEnd));
       update();
       const timer = setInterval(update, 1000);
@@ -127,6 +125,109 @@ export function Home() {
     if (!isLoading) setTimeout(() => setHeroVisible(true), 50);
   }, [isLoading]);
 
+  useEffect(() => {
+    const tg = (window as any).Telegram?.WebApp;
+    if (!tg || !tg.initData) {
+      setAuthState("unauthenticated");
+      return;
+    }
+
+    tg.ready();
+    tg.expand();
+
+    fetch("/api/auth/telegram", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData: tg.initData }),
+    })
+      .then((r) => r.json())
+      .then(async (authRes) => {
+        if (authRes.ok && authRes.user) {
+          const userRes = await fetch(`/api/user?id=${authRes.user.id}`);
+          const userData = await userRes.json();
+          if (userData.phone) {
+            setAuthState("authenticated");
+          } else {
+            setAuthState("no-phone");
+          }
+        } else {
+          setAuthState("unauthenticated");
+        }
+      })
+      .catch(() => {
+        setAuthState("unauthenticated");
+      });
+  }, []);
+
+  const handleTelegramLogin = () => {
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg) {
+      tg.expand();
+      tg.openTelegramLink("https://t.me/Gechekubot");
+    }
+  };
+
+  const handleSharePhone = () => {
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg) {
+      tg.openTelegramLink("https://t.me/Gechekubot?start=share_phone");
+    }
+  };
+
+  if (authState === "loading") {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <HomeSkeleton />
+      </div>
+    );
+  }
+
+  if (authState === "unauthenticated") {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen gap-4 p-6 bg-background">
+        <img src={glogoSrc} alt="Gech Ekub" className="w-20 h-20 rounded-2xl object-cover shadow-lg mb-2" />
+        <h2 className="text-2xl font-extrabold text-center">Welcome to Gech Ekub</h2>
+        <p className="text-center text-muted-foreground max-w-xs">
+          Login with Telegram to access the lottery app and start buying tickets.
+        </p>
+        <button
+          onClick={handleTelegramLogin}
+          className="mt-4 w-full max-w-xs bg-primary text-primary-foreground font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-transform"
+          style={{
+            fontFamily: "'Highstories', sans-serif",
+            fontSize: "24px",
+            letterSpacing: "0.05em",
+          }}
+        >
+          Login with Telegram
+        </button>
+      </div>
+    );
+  }
+
+  if (authState === "no-phone") {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen gap-4 p-6 bg-background">
+        <img src={glogoSrc} alt="Gech Ekub" className="w-20 h-20 rounded-2xl object-cover shadow-lg mb-2" />
+        <h2 className="text-2xl font-extrabold text-center">Share Phone Number</h2>
+        <p className="text-center text-muted-foreground max-w-xs">
+          Please share your phone number to continue and access the lottery app.
+        </p>
+        <button
+          onClick={handleSharePhone}
+          className="mt-4 w-full max-w-xs bg-primary text-primary-foreground font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-transform"
+          style={{
+            fontFamily: "'Highstories', sans-serif",
+            fontSize: "24px",
+            letterSpacing: "0.05em",
+          }}
+        >
+          Share Phone Number
+        </button>
+      </div>
+    );
+  }
+
   const percentFilled = campaign
     ? Math.min(100, Math.round((campaign.soldSlots / campaign.totalSlots) * 100))
     : 0;
@@ -134,7 +235,6 @@ export function Home() {
 
   return (
     <div className="flex flex-col flex-1">
-      {/* Sticky blurred header */}
       <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/40 px-6 py-3 flex justify-between items-center">
         <div className="flex items-center gap-2.5">
           <img src={glogoSrc} alt="Gech Ekub Logo" className="w-9 h-9 rounded-xl object-cover shadow-sm" />
@@ -157,25 +257,19 @@ export function Home() {
         <div
           className={`flex flex-col transition-all duration-500 ${heroVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
         >
-          {/* Featured Campaign Card */}
           {campaign ? (
             <div className="px-2 pt-0 mb-5">
               <div
                 className="rounded-[1.75rem] overflow-hidden shadow-lg shadow-black/10 border border-border/50 relative bg-cover bg-center"
                 style={{ backgroundImage: `url(${greenPatternSrc})` }}
               >
-
-                {/* Image */}
                 <div className="relative w-full aspect-[16/9] bg-muted overflow-hidden">
                   <img
                     src={vehicleImage(campaign)}
                     alt={campaign.vehicleModel}
                     className="w-full h-full object-cover scale-110"
                   />
-                  {/* Gradient overlay */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
-
-                  {/* Top title */}
                   <div className="absolute top-0 left-0 right-0 p-4">
                     <h2
                       style={{ fontFamily: "'Highstories', sans-serif", fontSize: "36px", letterSpacing: "0.05em" }}
@@ -184,15 +278,11 @@ export function Home() {
                       {campaign.vehicleModel}
                     </h2>
                   </div>
-
-                  {/* Stars */}
                   <div className="absolute top-4 right-4 flex items-center gap-0.5">
                     {[...Array(5)].map((_, i) => (
                       <Star key={i} className="w-3.5 h-3.5 fill-secondary text-secondary drop-shadow" />
                     ))}
                   </div>
-
-                  {/* Bottom info */}
                   <div className="absolute bottom-0 left-0 right-0 p-4">
 {countdown.expired ? (
   <div className="flex items-center gap-2 bg-black/55 backdrop-blur-sm rounded-xl px-3 py-2.5">
@@ -214,10 +304,7 @@ export function Home() {
 )}
                   </div>
                 </div>
-
-                {/* Stats + CTA */}
                 <div className="p-4 flex flex-col gap-4">
-                  {/* Progress */}
                   <div
                     className="rounded-2xl p-3.5"
                     style={{ backgroundColor: "#7BC143", boxShadow: "inset 0 0 0 3px #000000" }}
@@ -239,10 +326,8 @@ export function Home() {
                         className="h-full rounded-full transition-all duration-1000 ease-out relative overflow-hidden bg-black"
                         style={{ width: `${percentFilled}%` }}
                       >
-                        {/* Shimmer gleam */}
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[shimmer_2s_infinite]" />
                       </div>
-                      {/* Tip marker showing sold-ticket momentum, sitting just outside the tip of the bar */}
                       <img
                         src={goTipIcon}
                         alt=""
@@ -255,8 +340,6 @@ export function Home() {
                       {ticketsRemaining.toLocaleString()} tickets remaining
                     </p>
                   </div>
-
-                  {/* Participants + CTA */}
                   <div className="flex items-stretch gap-3">
                     <div
                       className="relative flex items-center gap-2.5 rounded-2xl px-4 py-3 flex-1 overflow-hidden"
@@ -269,7 +352,6 @@ export function Home() {
                         </p>
                         <p className="text-xl font-extrabold leading-none text-black">{campaign.soldSlots}</p>
                       </div>
-                      {/* Decorative icon filling the card's existing right-hand space */}
                       <img
                         src={participantsIcon}
                         alt=""
@@ -289,7 +371,6 @@ export function Home() {
                       }}
                     >
                       Buy Ticket
-                      {/* Decorative ticket mark tucked inside the button, in its bottom-right corner */}
                       <img
                         src={ticketIcon}
                         alt=""
@@ -311,7 +392,6 @@ export function Home() {
             </div>
           )}
 
-          {/* Filter Tabs */}
           <div className="px-4 mb-5">
             <div className="flex gap-2 bg-muted/50 p-1 rounded-2xl">
               {FILTER_TABS.map(({ id, label, icon: Icon, bg }) => (
@@ -339,7 +419,6 @@ export function Home() {
             </div>
           </div>
 
-          {/* Active Lotteries — tap a vehicle to feature it in the hero */}
           <div className="px-4 mb-2">
             <div className="flex justify-between items-center mb-3">
               <div className="flex items-center gap-2">

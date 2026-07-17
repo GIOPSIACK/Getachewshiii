@@ -4,9 +4,7 @@ import * as schema from "./schema";
 
 const { Pool } = pg;
 
-const connectionString = process.env.DATABASE_URL;
-// Supabase "Transaction" pooler uses port 6543 and ?pgbouncer=true.
-// In that mode Postgres prepared statements must be disabled.
+const connectionString = process.env.DATABASE_URL ?? "";
 const usesPooler =
   Boolean(connectionString) &&
   (/[?&]pgbouncer=true/.test(connectionString) ||
