@@ -89,7 +89,7 @@ const FILTER_TABS = [
   { id: "new", label: "New", icon: TrendingUp, bg: filterNewSrc },
 ];
 
-type AuthState = "loading" | "unauthenticated" | "no-phone" | "authenticated";
+type AuthState = "loading" | "ready";
 
 export function Home() {
   const { data: allCampaigns, isLoading } = useListCampaigns();
@@ -128,7 +128,7 @@ export function Home() {
   useEffect(() => {
     const tg = (window as any).Telegram?.WebApp;
     if (!tg) {
-      setAuthState("unauthenticated");
+      setAuthState("ready");
       return;
     }
 
@@ -138,122 +138,36 @@ export function Home() {
     const initData = tg.initData || "";
     const fallbackUser = tg.initDataUnsafe?.user;
 
-    if (!initData && !fallbackUser) {
-      setAuthState("unauthenticated");
-      return;
-    }
-
-    async function authenticate() {
+    async function register() {
       try {
-        let authRes;
         if (initData) {
           const r = await fetch("/api/auth/telegram", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ initData }),
           });
-          authRes = { ok: r.ok, status: r.status, data: await r.json() };
-        } else {
-          authRes = { ok: false, status: 0 };
+          if (r.ok) {
+            setAuthState("ready");
+            return;
+          }
         }
 
-        let telegramId: string | null = null;
-        let firstName: string | null = null;
-
-        if (authRes.ok && authRes.data?.user) {
-          telegramId = authRes.data.user.id;
-          firstName = authRes.data.user.firstName;
-        } else if (fallbackUser?.id) {
-          telegramId = String(fallbackUser.id);
-          firstName = fallbackUser.first_name;
+        if (fallbackUser?.id) {
+          await fetch(`/api/user?id=${fallbackUser.id}`);
         }
-
-        if (!telegramId) {
-          setAuthState("unauthenticated");
-          return;
-        }
-
-        const userRes = await fetch(`/api/user?id=${telegramId}`);
-        const userData = await userRes.json();
-
-        if (userData.phone) {
-          setAuthState("authenticated");
-        } else {
-          setAuthState("no-phone");
-        }
-      } catch (err) {
-        setAuthState("unauthenticated");
+      } catch {
+        // silent fail — show the app anyway
       }
+      setAuthState("ready");
     }
 
-    authenticate();
+    register();
   }, []);
-
-  const handleTelegramLogin = () => {
-    const tg = (window as any).Telegram?.WebApp;
-    if (tg) {
-      tg.expand();
-      tg.openTelegramLink("https://t.me/Gechekubot");
-    }
-  };
-
-  const handleSharePhone = () => {
-    const tg = (window as any).Telegram?.WebApp;
-    if (tg) {
-      tg.openTelegramLink("https://t.me/Gechekubot?start=share_phone");
-    }
-  };
 
   if (authState === "loading") {
     return (
       <div className="flex items-center justify-center h-screen">
         <HomeSkeleton />
-      </div>
-    );
-  }
-
-  if (authState === "unauthenticated") {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen gap-4 p-6 bg-background">
-        <img src={glogoSrc} alt="Gech Ekub" className="w-20 h-20 rounded-2xl object-cover shadow-lg mb-2" />
-        <h2 className="text-2xl font-extrabold text-center">Welcome to Gech Ekub</h2>
-        <p className="text-center text-muted-foreground max-w-xs">
-          Login with Telegram to access the lottery app and start buying tickets.
-        </p>
-        <button
-          onClick={handleTelegramLogin}
-          className="mt-4 w-full max-w-xs bg-primary text-primary-foreground font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-transform"
-          style={{
-            fontFamily: "'Highstories', sans-serif",
-            fontSize: "24px",
-            letterSpacing: "0.05em",
-          }}
-        >
-          Login with Telegram
-        </button>
-      </div>
-    );
-  }
-
-  if (authState === "no-phone") {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen gap-4 p-6 bg-background">
-        <img src={glogoSrc} alt="Gech Ekub" className="w-20 h-20 rounded-2xl object-cover shadow-lg mb-2" />
-        <h2 className="text-2xl font-extrabold text-center">Share Phone Number</h2>
-        <p className="text-center text-muted-foreground max-w-xs">
-          Please share your phone number to continue and access the lottery app.
-        </p>
-        <button
-          onClick={handleSharePhone}
-          className="mt-4 w-full max-w-xs bg-primary text-primary-foreground font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-transform"
-          style={{
-            fontFamily: "'Highstories', sans-serif",
-            fontSize: "24px",
-            letterSpacing: "0.05em",
-          }}
-        >
-          Share Phone Number
-        </button>
       </div>
     );
   }
