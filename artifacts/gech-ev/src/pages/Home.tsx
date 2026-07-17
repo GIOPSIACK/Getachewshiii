@@ -128,7 +128,6 @@ export function Home() {
   useEffect(() => {
     const tg = (window as any).Telegram?.WebApp;
     if (!tg) {
-      console.log("[Home] No Telegram WebApp found");
       setAuthState("unauthenticated");
       return;
     }
@@ -136,46 +135,58 @@ export function Home() {
     tg.ready();
     tg.expand();
 
-    console.log("[Home] tg.initData:", tg.initData ? `${tg.initData.length} chars` : "empty");
-    console.log("[Home] tg.initDataUnsafe:", tg.initDataUnsafe);
-
     const initData = tg.initData || "";
+    const fallbackUser = tg.initDataUnsafe?.user;
 
-    if (!initData) {
-      console.log("[Home] initData is empty, showing unauthenticated");
+    if (!initData && !fallbackUser) {
       setAuthState("unauthenticated");
       return;
     }
 
-    fetch("/api/auth/telegram", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ initData }),
-    })
-      .then((r) => {
-        console.log("[Home] /api/auth/telegram status:", r.status);
-        return r.json();
-      })
-      .then(async (authRes) => {
-        console.log("[Home] /api/auth/telegram response:", authRes);
-        if (authRes.ok && authRes.user) {
-          const userRes = await fetch(`/api/user?id=${authRes.user.id}`);
-          const userData = await userRes.json();
-          console.log("[Home] /api/user response:", userData);
-          if (userData.phone) {
-            setAuthState("authenticated");
-          } else {
-            setAuthState("no-phone");
-          }
+    async function authenticate() {
+      try {
+        let authRes;
+        if (initData) {
+          const r = await fetch("/api/auth/telegram", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ initData }),
+          });
+          authRes = { ok: r.ok, status: r.status, data: await r.json() };
         } else {
-          console.log("[Home] auth failed, showing unauthenticated");
-          setAuthState("unauthenticated");
+          authRes = { ok: false, status: 0 };
         }
-      })
-      .catch((err) => {
-        console.error("[Home] auth error:", err);
+
+        let telegramId: string | null = null;
+        let firstName: string | null = null;
+
+        if (authRes.ok && authRes.data?.user) {
+          telegramId = authRes.data.user.id;
+          firstName = authRes.data.user.firstName;
+        } else if (fallbackUser?.id) {
+          telegramId = String(fallbackUser.id);
+          firstName = fallbackUser.first_name;
+        }
+
+        if (!telegramId) {
+          setAuthState("unauthenticated");
+          return;
+        }
+
+        const userRes = await fetch(`/api/user?id=${telegramId}`);
+        const userData = await userRes.json();
+
+        if (userData.phone) {
+          setAuthState("authenticated");
+        } else {
+          setAuthState("no-phone");
+        }
+      } catch (err) {
         setAuthState("unauthenticated");
-      });
+      }
+    }
+
+    authenticate();
   }, []);
 
   const handleTelegramLogin = () => {

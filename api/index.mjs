@@ -69611,18 +69611,6 @@ function parseInitData(initData) {
   }
   return params;
 }
-function buildDataCheckString(params) {
-  const sortedEntries = Array.from(params.entries()).sort(([a2], [b2]) => a2.localeCompare(b2));
-  return sortedEntries.map(([k2, v2]) => `${k2}=${v2}`).join("\n");
-}
-function validateHash(initData, hash) {
-  const params = parseInitData(initData);
-  params.delete("hash");
-  const dataCheckString = buildDataCheckString(params);
-  const secretKey = crypto2.createHmac("sha256", "WebAppData").update(TOKEN).digest();
-  const calculatedHash = crypto2.createHmac("sha256", secretKey).update(dataCheckString).digest("hex");
-  return calculatedHash === hash;
-}
 router7.post("/telegram", async (req, res) => {
   const { initData } = req.body || {};
   if (!initData || typeof initData !== "string") {
@@ -69637,17 +69625,21 @@ router7.post("/telegram", async (req, res) => {
     const params = parseInitData(initData);
     const hash = params.get("hash");
     if (!hash) {
-      res.status(400).json({ error: "Missing hash in initData", debug: { initDataLength: initData.length, initDataPreview: initData.slice(0, 100) } });
+      res.status(400).json({ error: "Missing hash" });
       return;
     }
-    const isValid2 = validateHash(initData, hash);
-    if (!isValid2) {
-      res.status(401).json({ error: "Invalid initData signature", debug: { hash, initDataLength: initData.length } });
+    params.delete("hash");
+    const sortedEntries = Array.from(params.entries()).sort(([a2], [b2]) => a2.localeCompare(b2));
+    const dataCheckString = sortedEntries.map(([k2, v2]) => `${k2}=${v2}`).join("\n");
+    const secretKey = crypto2.createHmac("sha256", "WebAppData").update(TOKEN).digest();
+    const calculatedHash = crypto2.createHmac("sha256", secretKey).update(dataCheckString).digest("hex");
+    if (calculatedHash !== hash) {
+      res.status(401).json({ error: "Invalid initData signature" });
       return;
     }
     const userParam = params.get("user");
     if (!userParam) {
-      res.status(400).json({ error: "Missing user in initData", debug: { keys: Array.from(params.keys()) } });
+      res.status(400).json({ error: "Missing user" });
       return;
     }
     const user = JSON.parse(decodeURIComponent(userParam));
@@ -69665,7 +69657,7 @@ router7.post("/telegram", async (req, res) => {
     res.json({ ok: true, user: { id: telegramId, firstName } });
   } catch (e2) {
     console.error("auth/telegram error:", e2);
-    res.status(500).json({ error: "Internal server error", details: String(e2) });
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 var auth_default = router7;
