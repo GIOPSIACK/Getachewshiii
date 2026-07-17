@@ -69670,7 +69670,7 @@ router8.use(tickets_default);
 router8.use(chat_default);
 router8.use(leaderboard_default);
 router8.use(user_default);
-router8.use(auth_default);
+router8.use("/auth", auth_default);
 var routes_default = router8;
 
 // src/routes/telegram.ts

@@ -15,6 +15,6 @@ router.use(ticketsRouter);
 router.use(chatRouter);
 router.use(leaderboardRouter);
 router.use(userRouter);
-router.use(authRouter);
+router.use("/auth", authRouter);
 
 export default router;
