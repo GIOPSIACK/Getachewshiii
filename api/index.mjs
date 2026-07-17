@@ -69599,6 +69599,18 @@ var import_express7 = __toESM(require_express2(), 1);
 import crypto2 from "node:crypto";
 var router7 = (0, import_express7.Router)();
 var TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+function parseInitData(initData) {
+  const params = /* @__PURE__ */ new Map();
+  const pairs = initData.split("&");
+  for (const pair of pairs) {
+    const idx = pair.indexOf("=");
+    if (idx === -1) continue;
+    const key = pair.slice(0, idx);
+    const value = pair.slice(idx + 1);
+    params.set(key, value);
+  }
+  return params;
+}
 router7.post("/telegram", async (req, res) => {
   const { initData } = req.body || {};
   if (!initData || typeof initData !== "string") {
@@ -69610,7 +69622,7 @@ router7.post("/telegram", async (req, res) => {
     return;
   }
   try {
-    const params = new URLSearchParams(initData);
+    const params = parseInitData(initData);
     const hash = params.get("hash");
     if (!hash) {
       res.status(400).json({ error: "Missing hash in initData" });
@@ -69630,7 +69642,7 @@ router7.post("/telegram", async (req, res) => {
       res.status(400).json({ error: "Missing user in initData" });
       return;
     }
-    const user = JSON.parse(userParam);
+    const user = JSON.parse(decodeURIComponent(userParam));
     const telegramId = String(user.id);
     const firstName = user.first_name;
     await db.insert(registrationsTable).values({

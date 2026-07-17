@@ -5,6 +5,19 @@ import { db, registrationsTable } from "@workspace/db";
 const router: IRouter = Router();
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
+function parseInitData(initData: string): Map<string, string> {
+  const params = new Map<string, string>();
+  const pairs = initData.split("&");
+  for (const pair of pairs) {
+    const idx = pair.indexOf("=");
+    if (idx === -1) continue;
+    const key = pair.slice(0, idx);
+    const value = pair.slice(idx + 1);
+    params.set(key, value);
+  }
+  return params;
+}
+
 router.post("/telegram", async (req, res): Promise<void> => {
   const { initData } = req.body || {};
   if (!initData || typeof initData !== "string") {
@@ -17,7 +30,7 @@ router.post("/telegram", async (req, res): Promise<void> => {
   }
 
   try {
-    const params = new URLSearchParams(initData);
+    const params = parseInitData(initData);
     const hash = params.get("hash");
     if (!hash) {
       res.status(400).json({ error: "Missing hash in initData" });
@@ -43,7 +56,7 @@ router.post("/telegram", async (req, res): Promise<void> => {
       return;
     }
 
-    const user = JSON.parse(userParam);
+    const user = JSON.parse(decodeURIComponent(userParam));
     const telegramId = String(user.id);
     const firstName = user.first_name;
 
