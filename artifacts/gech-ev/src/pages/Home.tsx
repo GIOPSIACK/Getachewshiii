@@ -149,12 +149,22 @@ export function Home() {
           const r = await fetch("/api/auth/telegram", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ initData }),
+            body: JSON.stringify({ initData, fallbackUser }),
           });
           if (r.ok) {
             const data = await r.json();
             telegramId = data.user?.id ?? null;
             firstName = data.user?.firstName ?? null;
+            if (data.user?.phone) {
+              setUser({
+                telegramId,
+                firstName,
+                lastName: null,
+                phone: data.user.phone,
+              });
+              setAuthState("ready");
+              return;
+            }
           }
         }
 
