@@ -13,7 +13,8 @@ import { Leaderboard } from './pages/Leaderboard';
 import { AdminPanel } from './pages/Admin';
 import NotFound from '@/pages/not-found';
 import { AppLayout } from './components/layout/AppLayout';
-import { CheckoutProvider } from './contexts/CheckoutContext';
+import { CheckoutProvider } from "./contexts/CheckoutContext";
+import { AuthProvider } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
 
@@ -40,11 +41,11 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <CheckoutProvider>
+        <AuthProvider><CheckoutProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
             <Router />
           </WouterRouter>
-        </CheckoutProvider>
+        </CheckoutProvider></AuthProvider>
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>

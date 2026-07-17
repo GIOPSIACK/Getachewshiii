@@ -16,6 +16,7 @@ import ticketIcon from "@/assets/icons/ticket.svg";
 import soldIcon from "@/assets/icons/sold.svg";
 import goTipIcon from "@/assets/icons/go-tip.svg";
 import { HomeSkeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/contexts/AuthContext";
 
 const ALLOWED_MODELS: string[] = ["BYD Yuan Plus", "Sinotruk HOWO 371"];
 
@@ -99,6 +100,7 @@ export function Home() {
   const [countdown, setCountdown] = useState(() => getSellingRemaining(sellingEnd));
   const [heroVisible, setHeroVisible] = useState(false);
 
+  const { setUser } = useAuth();
   const [authState, setAuthState] = useState<AuthState>("loading");
 
   const campaigns = (allCampaigns ?? []).filter((c) => ALLOWED_MODELS.includes(c.vehicleModel as string));
@@ -138,8 +140,11 @@ export function Home() {
     const initData = tg.initData || "";
     const fallbackUser = tg.initDataUnsafe?.user;
 
-    async function register() {
+        async function register() {
       try {
+        let telegramId: string | null = null;
+        let firstName: string | null = null;
+
         if (initData) {
           const r = await fetch("/api/auth/telegram", {
             method: "POST",
@@ -147,16 +152,29 @@ export function Home() {
             body: JSON.stringify({ initData }),
           });
           if (r.ok) {
-            setAuthState("ready");
-            return;
+            const data = await r.json();
+            telegramId = data.user?.id ?? null;
+            firstName = data.user?.firstName ?? null;
           }
         }
 
-        if (fallbackUser?.id) {
-          await fetch(`/api/user?id=${fallbackUser.id}`);
+        if (!telegramId && fallbackUser?.id) {
+          telegramId = String(fallbackUser.id);
+          firstName = fallbackUser.first_name;
+        }
+
+        if (telegramId) {
+          const userRes = await fetch(`/api/user?id=${telegramId}`);
+          const userData = await userRes.json();
+          setUser({
+            telegramId,
+            firstName: firstName ?? userData.firstName ?? null,
+            lastName: userData.lastName ?? null,
+            phone: userData.phone ?? null,
+          });
         }
       } catch {
-        // silent fail â€” show the app anyway
+        // silent fail — show the app anyway
       }
       setAuthState("ready");
     }
@@ -455,3 +473,8 @@ export function Home() {
     </div>
   );
 }
+
+
+
+
+

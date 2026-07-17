@@ -1,15 +1,14 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { Phone } from "lucide-react";
 import glogoSrc from "@/assets/glogo.jpg";
 import jesterSrc from "@/assets/jester.png";
 
 export function Profile() {
-  const [savedPhone, setSavedPhone] = useState<string>("");
+  const { user } = useAuth();
 
-  useEffect(() => {
-    const stored = localStorage.getItem("gech_phone") || "";
-    setSavedPhone(stored);
-  }, []);
+
+  
 
   return (
     <div className="flex flex-col flex-1 min-h-[100dvh]">
@@ -24,14 +23,14 @@ export function Profile() {
       </div>
 
       <div className="flex-1 px-4 pt-4 pb-8">
-        {savedPhone ? (
+        {user?.phone ? (
           <div className="bg-primary/10 border border-primary/20 rounded-[1.5rem] p-5 flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center shrink-0 shadow-sm">
               <Phone className="w-7 h-7 text-foreground" />
             </div>
             <div>
               <p className="text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wider">User Phone Number</p>
-              <p className="text-xl font-extrabold text-foreground tracking-wide">{savedPhone}</p>
+              <p className="text-xl font-extrabold text-foreground tracking-wide">{user?.phone}</p>
             </div>
           </div>
         ) : (
@@ -56,3 +55,4 @@ export function Profile() {
     </div>
   );
 }
+
