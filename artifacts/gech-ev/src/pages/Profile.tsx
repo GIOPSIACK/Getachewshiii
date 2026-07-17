@@ -5,8 +5,7 @@ import jesterSrc from "@/assets/jester.png";
 
 export function Profile() {
   const { user } = useAuth();
-  const storedPhone = localStorage.getItem("gech_phone") || "";
-  const phone = user?.phone || storedPhone;
+  const phone = user?.phone || "";
 
   return (
     <div className="flex flex-col flex-1 min-h-[100dvh]">
@@ -36,7 +35,7 @@ export function Profile() {
               <Phone className="w-8 h-8 text-muted-foreground" />
             </div>
             <h3 className="font-bold text-base mb-1">No phone number saved</h3>
-            <p className="text-sm text-muted-foreground">Search for your tickets in the Tickets tab and your number will appear here.</p>
+            <p className="text-sm text-muted-foreground">Open the bot and share your phone number to register.</p>
           </div>
         )}
       </div>

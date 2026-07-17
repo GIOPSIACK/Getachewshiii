@@ -29,7 +29,6 @@ export function MyTickets() {
     const cleaned = inputPhone.replace(/\D/g, "");
     if (cleaned.length >= 9) {
       setSearchedPhone(cleaned);
-      localStorage.setItem("gech_phone", cleaned);
     }
   };
 
