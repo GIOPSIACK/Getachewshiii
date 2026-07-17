@@ -17,12 +17,12 @@ export function MyTickets() {
 
   const { data: tickets, isLoading: ticketsLoading } = useListTickets(
     { phone: searchedPhone! },
-    { query: { enabled: !!searchedPhone } }
+    { query: { enabled: !!searchedPhone } as any }
   );
 
   const { data: stats } = useGetTicketStats(
     { phone: searchedPhone! },
-    { query: { enabled: !!searchedPhone } }
+    { query: { enabled: !!searchedPhone } as any }
   );
 
   const handleSearch = () => {

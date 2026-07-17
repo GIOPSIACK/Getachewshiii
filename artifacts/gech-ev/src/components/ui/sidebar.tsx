@@ -627,6 +627,7 @@ function SidebarMenuSkeleton({
       <Skeleton
         className="h-4 max-w-[var(--skeleton-width)] flex-1"
         data-sidebar="menu-skeleton-text"
+        // @ts-ignore
         style={
           {
             '--skeleton-width': width,

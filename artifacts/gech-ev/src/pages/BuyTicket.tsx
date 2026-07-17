@@ -15,8 +15,8 @@ export function BuyTicket() {
   const { state, updateState } = useCheckout();
   
   const campaignId = Number(params?.campaignId || state.campaignId || 1);
-  const { data: campaign, isLoading } = useGetCampaign(campaignId, { 
-    query: { enabled: !!campaignId } 
+  const { data: campaign, isLoading } = useGetCampaign(campaignId, {
+    query: { enabled: !!campaignId } as any,
   });
 
   const [quantity, setQuantity] = useState(state.quantity || 1);

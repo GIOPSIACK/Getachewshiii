@@ -12,7 +12,7 @@ export function Checkout() {
 
   const campaignId = Number(params?.campaignId || state.campaignId);
   const { data: campaign, isLoading } = useGetCampaign(campaignId, {
-    query: { enabled: !!campaignId },
+    query: { enabled: !!campaignId } as any,
   });
 
   const uploadReceipt = useUploadReceipt();
