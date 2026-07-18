@@ -228,12 +228,21 @@ async function handleUpdate(u: any) {
     const telegramId = String(u.message.from.id);
     const phone = u.message.contact.phone_number;
     await db
-      .update(registrationsTable)
-      .set({ phone, updatedAt: new Date() })
-      .where(eq(registrationsTable.telegramId, telegramId));
+      .insert(registrationsTable)
+      .values({
+        telegramId,
+        firstName: u.message.from.first_name,
+        username: u.message.from.username,
+        phone,
+        botState: { step: "idle" },
+      })
+      .onConflictDoUpdate({
+        target: registrationsTable.telegramId,
+        set: { phone, updatedAt: new Date() },
+      });
     await tg("sendMessage", {
       chat_id: chatId,
-      text: `✅ Registered with phone ${phone}!`,
+      text: `\u2705 Registered with phone ${phone}!`,
       reply_markup: { remove_keyboard: true },
     });
     await sendWebAppButton(chatId);

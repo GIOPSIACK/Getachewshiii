@@ -69876,7 +69876,16 @@ async function handleUpdate(u2) {
     const chatId2 = u2.message.chat.id;
     const telegramId2 = String(u2.message.from.id);
     const phone = u2.message.contact.phone_number;
-    await db.update(registrationsTable).set({ phone, updatedAt: /* @__PURE__ */ new Date() }).where(eq(registrationsTable.telegramId, telegramId2));
+    await db.insert(registrationsTable).values({
+      telegramId: telegramId2,
+      firstName: u2.message.from.first_name,
+      username: u2.message.from.username,
+      phone,
+      botState: { step: "idle" }
+    }).onConflictDoUpdate({
+      target: registrationsTable.telegramId,
+      set: { phone, updatedAt: /* @__PURE__ */ new Date() }
+    });
     await tg("sendMessage", {
       chat_id: chatId2,
       text: `\u2705 Registered with phone ${phone}!`,
