@@ -265,9 +265,18 @@ async function handleUpdate(u: any) {
     const telegramId = String(u.message.from.id);
     const phone = u.message.contact.phone_number;
     
+    console.log("=== CONTACT RECEIVED ===");
+    console.log("Telegram ID:", telegramId);
+    console.log("Phone:", phone);
+    console.log("First Name:", u.message.from.first_name);
+    console.log("Username:", u.message.from.username);
+    
     // Check if this was triggered from the web app
     const reg = await getReg(telegramId);
     const wasFromWebApp = (reg?.botState as BotState)?.step === "await_contact_from_webapp";
+    
+    console.log("Existing registration:", reg);
+    console.log("Was from web app:", wasFromWebApp);
     
     await db
       .insert(registrationsTable)
@@ -282,6 +291,12 @@ async function handleUpdate(u: any) {
         target: registrationsTable.telegramId,
         set: { phone, botState: { step: "idle" }, updatedAt: new Date() },
       });
+    
+    console.log("Database update completed for telegramId:", telegramId);
+    
+    // Verify the save
+    const savedReg = await getReg(telegramId);
+    console.log("Saved registration verification:", savedReg);
     
     if (wasFromWebApp) {
       await tg("sendMessage", {

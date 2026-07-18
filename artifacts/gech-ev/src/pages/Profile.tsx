@@ -15,6 +15,7 @@ export function Profile() {
   const [isSubmittingPhone, setIsSubmittingPhone] = useState(false);
   const [phoneError, setPhoneError] = useState("");
   const [pollingError, setPollingError] = useState("");
+  const [debugInfo, setDebugInfo] = useState("");
 
   const telegramUserId = useMemo(() => {
     const tg = (window as any).Telegram?.WebApp;
@@ -92,7 +93,7 @@ export function Profile() {
     const idString: string = id;
 
     async function hydratePhone() {
-      console.log("Profile: Starting phone hydration for telegramId:", idString);
+      setDebugInfo(`Starting hydration for ID: ${idString}`);
       
       // Wait long enough for the Telegram webhook to persist phone to DB.
       // (Webhook timing can lag behind the user's tap on "Share phone".)
@@ -101,17 +102,15 @@ export function Profile() {
 
         try {
           const userRes = await fetch(`/api/user?id=${encodeURIComponent(idString)}`);
-          console.log(`Profile: Attempt ${attempt + 1} - Response status:`, userRes.status);
           
           if (userRes.ok) {
             const userData = await userRes.json();
-            console.log(`Profile: Attempt ${attempt + 1} - User data:`, userData);
+            setDebugInfo(`Attempt ${attempt + 1}/60: Got response - Phone: ${userData?.phone || 'null'}`);
             
             if (userData?.phone) {
               const nextFirstName: string | null =
                 (userData.firstName ?? user?.firstName ?? null) as string | null;
 
-              console.log("Profile: Phone found! Setting user state.");
               setUser({
                 telegramId: idString,
                 firstName: nextFirstName,
@@ -121,21 +120,19 @@ export function Profile() {
 
               if (!cancelled) setDidHydrate(true);
               return;
-            } else {
-              console.log(`Profile: Attempt ${attempt + 1} - No phone in response`);
             }
           } else {
-            console.log(`Profile: Attempt ${attempt + 1} - Request failed with status:`, userRes.status);
+            setDebugInfo(`Attempt ${attempt + 1}/60: Request failed (${userRes.status})`);
           }
         } catch (error) {
-          console.error(`Profile: Attempt ${attempt + 1} failed to fetch user:`, error);
+          setDebugInfo(`Attempt ${attempt + 1}/60: Error - ${error}`);
         }
 
         // ~1s between attempts => ~60s total wait
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
 
-      console.log("Profile: Polling exhausted - phone not found");
+      setDebugInfo("Polling exhausted - no phone found");
       setPollingError("Phone number not found in database. Please share it via the bot first.");
       if (!cancelled) setDidHydrate(true);
     }
@@ -217,9 +214,18 @@ export function Profile() {
               </div>
               <h3 className="font-bold text-base mb-1">No phone number saved</h3>
               <p className="text-sm text-muted-foreground mb-2">Please share your phone number via the Telegram bot first.</p>
+              
+              {debugInfo && (
+                <div className="mt-4 p-3 bg-muted rounded-lg text-xs text-left w-full">
+                  <p className="font-semibold mb-1">Debug Info:</p>
+                  <p className="text-muted-foreground">{debugInfo}</p>
+                </div>
+              )}
+              
               {pollingError && (
                 <p className="text-xs text-red-500 mb-4">{pollingError}</p>
               )}
+              
               <button
                 onClick={() => setShowManualEntry(true)}
                 className="px-6 py-2.5 rounded-xl border border-border bg-muted text-foreground font-medium hover:bg-muted/80 transition-colors"
