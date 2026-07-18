@@ -69655,7 +69655,11 @@ router7.post("/telegram", async (req, res) => {
     }
     const existing = await db.select().from(registrationsTable).where(eq(registrationsTable.telegramId, telegramId)).limit(1);
     if (existing.length > 0) {
-      await db.update(registrationsTable).set({ firstName, username, phone, updatedAt: /* @__PURE__ */ new Date() }).where(eq(registrationsTable.telegramId, telegramId));
+      const updateData = { firstName, username, updatedAt: /* @__PURE__ */ new Date() };
+      if (phone) {
+        updateData.phone = phone;
+      }
+      await db.update(registrationsTable).set(updateData).where(eq(registrationsTable.telegramId, telegramId));
     } else {
       await db.insert(registrationsTable).values({
         telegramId,

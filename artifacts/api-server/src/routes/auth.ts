@@ -75,9 +75,13 @@ router.post("/telegram", async (req, res): Promise<void> => {
       .limit(1);
 
     if (existing.length > 0) {
+      const updateData: Record<string, unknown> = { firstName, username, updatedAt: new Date() };
+      if (phone) {
+        updateData.phone = phone;
+      }
       await db
         .update(registrationsTable)
-        .set({ firstName, username, phone, updatedAt: new Date() })
+        .set(updateData)
         .where(eq(registrationsTable.telegramId, telegramId));
     } else {
       await db
