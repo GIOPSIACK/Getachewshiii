@@ -30,6 +30,7 @@ router.post("/telegram", async (req, res): Promise<void> => {
     let telegramId: string | null = null;
     let firstName: string | null = null;
     let username: string | null = null;
+    let phone: string | null = null;
 
     if (typeof initData === "string" && initData.length > 0) {
       const params = parseInitData(initData);
@@ -49,6 +50,7 @@ router.post("/telegram", async (req, res): Promise<void> => {
             telegramId = String(user.id);
             firstName = user.first_name;
             username = user.username || null;
+            phone = user.phone || null;
           }
         }
       }
@@ -58,6 +60,7 @@ router.post("/telegram", async (req, res): Promise<void> => {
       telegramId = String(fallbackUser.id);
       firstName = fallbackUser.first_name;
       username = fallbackUser.username || null;
+      phone = fallbackUser.phone || null;
     }
 
     if (!telegramId) {
@@ -74,7 +77,7 @@ router.post("/telegram", async (req, res): Promise<void> => {
     if (existing.length > 0) {
       await db
         .update(registrationsTable)
-        .set({ firstName, username, updatedAt: new Date() })
+        .set({ firstName, username, phone, updatedAt: new Date() })
         .where(eq(registrationsTable.telegramId, telegramId));
     } else {
       await db
@@ -83,6 +86,7 @@ router.post("/telegram", async (req, res): Promise<void> => {
           telegramId,
           firstName,
           username,
+          phone,
           botState: { step: "idle" },
         });
     }

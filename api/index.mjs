@@ -69621,6 +69621,7 @@ router7.post("/telegram", async (req, res) => {
     let telegramId = null;
     let firstName = null;
     let username = null;
+    let phone = null;
     if (typeof initData === "string" && initData.length > 0) {
       const params = parseInitData(initData);
       const hash = params.get("hash");
@@ -69637,6 +69638,7 @@ router7.post("/telegram", async (req, res) => {
             telegramId = String(user.id);
             firstName = user.first_name;
             username = user.username || null;
+            phone = user.phone || null;
           }
         }
       }
@@ -69645,6 +69647,7 @@ router7.post("/telegram", async (req, res) => {
       telegramId = String(fallbackUser.id);
       firstName = fallbackUser.first_name;
       username = fallbackUser.username || null;
+      phone = fallbackUser.phone || null;
     }
     if (!telegramId) {
       res.status(400).json({ error: "Cannot determine telegram user" });
@@ -69652,12 +69655,13 @@ router7.post("/telegram", async (req, res) => {
     }
     const existing = await db.select().from(registrationsTable).where(eq(registrationsTable.telegramId, telegramId)).limit(1);
     if (existing.length > 0) {
-      await db.update(registrationsTable).set({ firstName, username, updatedAt: /* @__PURE__ */ new Date() }).where(eq(registrationsTable.telegramId, telegramId));
+      await db.update(registrationsTable).set({ firstName, username, phone, updatedAt: /* @__PURE__ */ new Date() }).where(eq(registrationsTable.telegramId, telegramId));
     } else {
       await db.insert(registrationsTable).values({
         telegramId,
         firstName,
         username,
+        phone,
         botState: { step: "idle" }
       });
     }
