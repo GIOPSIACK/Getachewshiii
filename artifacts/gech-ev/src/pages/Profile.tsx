@@ -18,26 +18,28 @@ export function Profile() {
   }, []);
 
   useEffect(() => {
-    const tg = (window as any).Telegram?.WebApp;
-    if (!tg) return;
-
-    // If we already have phone in context, nothing to do.
     if (phone) {
       setDidHydrate(true);
       return;
     }
 
-    const id = telegramUserId;
-    if (id == null) {
-      setDidHydrate(true);
-      return;
-    }
-
-    const idString: string = id;
-
     let cancelled = false;
 
+    // If Telegram WebApp / initData isn't available immediately, don't leave the UI stuck.
+    const fallbackTimer = setTimeout(() => {
+      if (!cancelled) setDidHydrate(true);
+    }, 3000);
+
     async function hydratePhone() {
+      const id = telegramUserId;
+      if (id == null) {
+        clearTimeout(fallbackTimer);
+        if (!cancelled) setDidHydrate(true);
+        return;
+      }
+
+      const idString: string = id;
+
       for (let attempt = 0; attempt < 10; attempt++) {
         if (cancelled) return;
 
@@ -55,6 +57,8 @@ export function Profile() {
                 lastName: null,
                 phone: String(userData.phone),
               });
+
+              clearTimeout(fallbackTimer);
               break;
             }
           }
@@ -66,6 +70,8 @@ export function Profile() {
           await new Promise((resolve) => setTimeout(resolve, 2000));
         }
       }
+
+      clearTimeout(fallbackTimer);
       if (!cancelled) setDidHydrate(true);
     }
 
@@ -73,6 +79,7 @@ export function Profile() {
 
     return () => {
       cancelled = true;
+      clearTimeout(fallbackTimer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [telegramUserId, phone, setUser]);
