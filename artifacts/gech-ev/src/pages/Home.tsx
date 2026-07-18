@@ -146,53 +146,40 @@ export function Home() {
         let firstName: string | null = null;
         let phone: string | null = null;
 
-      if (initData || fallbackUser?.id) {
-        const r = await fetch("/api/auth/telegram", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ initData: initData || undefined, fallbackUser: fallbackUser || undefined }),
-        });
-        if (r.ok) {
-          const data = await r.json();
-          if (data.user) {
-            telegramId = data.user.id;
-            firstName = data.user.firstName;
-            phone = data.user.phone ?? null;
-          }
-        }
-      }
-
-      if (!phone && tg?.requestContact) {
-        try {
-          await tg.requestContact();
-        } catch {
-          // user declined or unavailable
-        }
-        const tg2 = (window as any).Telegram?.WebApp;
-        const updatedInitData = tg2?.initData || "";
-        const updatedFallback = tg2?.initDataUnsafe?.user;
-        if (updatedInitData || updatedFallback?.id) {
-          const r2 = await fetch("/api/auth/telegram", {
+        if (initData || fallbackUser?.id) {
+          const r = await fetch("/api/auth/telegram", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ initData: updatedInitData || undefined, fallbackUser: updatedFallback || undefined }),
+            body: JSON.stringify({ initData: initData || undefined, fallbackUser: fallbackUser || undefined }),
           });
-          if (r2.ok) {
-            const data2 = await r2.json();
-            if (data2.user) {
-              phone = data2.user.phone ?? null;
+          if (r.ok) {
+            const data = await r.json();
+            if (data.user) {
+              telegramId = data.user.id;
+              firstName = data.user.firstName;
             }
           }
         }
-      }
 
         if (!telegramId && fallbackUser?.id) {
           telegramId = String(fallbackUser.id);
           firstName = fallbackUser.first_name;
-          phone = null;
         }
 
         if (telegramId) {
+          for (let attempt = 0; attempt < 10; attempt++) {
+            const userRes = await fetch(`/api/user?id=${encodeURIComponent(telegramId)}`);
+            if (userRes.ok) {
+              const userData = await userRes.json();
+              if (userData.phone) {
+                phone = userData.phone;
+                break;
+              }
+            }
+            if (attempt < 9) {
+              await new Promise((resolve) => setTimeout(resolve, 2000));
+            }
+          }
           setUser({ telegramId, firstName, lastName: null, phone });
         }
       } catch {
