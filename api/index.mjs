@@ -69650,19 +69650,17 @@ router7.post("/telegram", async (req, res) => {
       res.status(400).json({ error: "Cannot determine telegram user" });
       return;
     }
-    await db.insert(registrationsTable).values({
-      telegramId,
-      firstName,
-      username,
-      botState: { step: "idle" }
-    }).onConflictDoUpdate({
-      target: registrationsTable.telegramId,
-      set: {
+    const existing = await db.select().from(registrationsTable).where(eq(registrationsTable.telegramId, telegramId)).limit(1);
+    if (existing.length > 0) {
+      await db.update(registrationsTable).set({ firstName, username, updatedAt: /* @__PURE__ */ new Date() }).where(eq(registrationsTable.telegramId, telegramId));
+    } else {
+      await db.insert(registrationsTable).values({
+        telegramId,
         firstName,
         username,
-        updatedAt: /* @__PURE__ */ new Date()
-      }
-    });
+        botState: { step: "idle" }
+      });
+    }
     const [userRow] = await db.select().from(registrationsTable).where(eq(registrationsTable.telegramId, telegramId)).limit(1);
     res.json({
       ok: true,

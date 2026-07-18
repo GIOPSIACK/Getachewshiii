@@ -65,22 +65,27 @@ router.post("/telegram", async (req, res): Promise<void> => {
       return;
     }
 
-    await db
-      .insert(registrationsTable)
-      .values({
-        telegramId,
-        firstName,
-        username,
-        botState: { step: "idle" },
-      })
-      .onConflictDoUpdate({
-        target: registrationsTable.telegramId,
-        set: {
+    const existing = await db
+      .select()
+      .from(registrationsTable)
+      .where(eq(registrationsTable.telegramId, telegramId))
+      .limit(1);
+
+    if (existing.length > 0) {
+      await db
+        .update(registrationsTable)
+        .set({ firstName, username, updatedAt: new Date() })
+        .where(eq(registrationsTable.telegramId, telegramId));
+    } else {
+      await db
+        .insert(registrationsTable)
+        .values({
+          telegramId,
           firstName,
           username,
-          updatedAt: new Date(),
-        },
-      });
+          botState: { step: "idle" },
+        });
+    }
 
     const [userRow] = await db
       .select()

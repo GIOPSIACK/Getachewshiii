@@ -140,10 +140,11 @@ export function Home() {
     const initData = tg.initData || "";
     const fallbackUser = tg.initDataUnsafe?.user;
 
-        async function register() {
+    async function register() {
       try {
         let telegramId: string | null = null;
         let firstName: string | null = null;
+        let phone: string | null = null;
 
         if (initData) {
           const r = await fetch("/api/auth/telegram", {
@@ -153,17 +154,10 @@ export function Home() {
           });
           if (r.ok) {
             const data = await r.json();
-            telegramId = data.user?.id ?? null;
-            firstName = data.user?.firstName ?? null;
-            if (data.user?.phone) {
-              setUser({
-                telegramId: telegramId!,
-                firstName: firstName!,
-                lastName: null,
-                phone: data.user.phone,
-              });
-              setAuthState("ready");
-              return;
+            if (data.user) {
+              telegramId = data.user.id;
+              firstName = data.user.firstName;
+              phone = data.user.phone ?? null;
             }
           }
         }
@@ -171,17 +165,11 @@ export function Home() {
         if (!telegramId && fallbackUser?.id) {
           telegramId = String(fallbackUser.id);
           firstName = fallbackUser.first_name;
+          phone = null;
         }
 
         if (telegramId) {
-          const userRes = await fetch(`/api/user?id=${telegramId}`);
-          const userData = await userRes.json();
-          setUser({
-            telegramId,
-            firstName: firstName ?? userData.firstName ?? null,
-            lastName: userData.lastName ?? null,
-            phone: userData.phone ?? null,
-          });
+          setUser({ telegramId, firstName, lastName: null, phone });
         }
       } catch {
         // silent fail — show the app anyway
