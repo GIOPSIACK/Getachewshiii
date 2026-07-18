@@ -23,24 +23,22 @@ export function Profile() {
       return;
     }
 
+    const id = telegramUserId;
+
+    // If we can't determine telegram id yet, avoid infinite loading.
+    if (id == null) {
+      setDidHydrate(true);
+      return;
+    }
+
     let cancelled = false;
 
-    // If Telegram WebApp / initData isn't available immediately, don't leave the UI stuck.
-    const fallbackTimer = setTimeout(() => {
-      if (!cancelled) setDidHydrate(true);
-    }, 3000);
+    const idString: string = id;
 
     async function hydratePhone() {
-      const id = telegramUserId;
-      if (id == null) {
-        clearTimeout(fallbackTimer);
-        if (!cancelled) setDidHydrate(true);
-        return;
-      }
-
-      const idString: string = id;
-
-      for (let attempt = 0; attempt < 10; attempt++) {
+      // Wait long enough for the Telegram webhook to persist phone to DB.
+      // (Webhook timing can lag behind the user's tap on "Share phone".)
+      for (let attempt = 0; attempt < 30; attempt++) {
         if (cancelled) return;
 
         try {
@@ -58,20 +56,18 @@ export function Profile() {
                 phone: String(userData.phone),
               });
 
-              clearTimeout(fallbackTimer);
-              break;
+              if (!cancelled) setDidHydrate(true);
+              return;
             }
           }
         } catch {
-          // ignore
+          // ignore and retry
         }
 
-        if (attempt < 9) {
-          await new Promise((resolve) => setTimeout(resolve, 2000));
-        }
+        // ~1s between attempts => ~30s total wait
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
 
-      clearTimeout(fallbackTimer);
       if (!cancelled) setDidHydrate(true);
     }
 
@@ -79,7 +75,6 @@ export function Profile() {
 
     return () => {
       cancelled = true;
-      clearTimeout(fallbackTimer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [telegramUserId, phone, setUser]);
