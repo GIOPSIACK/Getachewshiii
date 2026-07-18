@@ -28,7 +28,10 @@ export function Profile() {
     }
 
     const id = telegramUserId;
-    if (id == null) return;
+    if (id == null) {
+      setDidHydrate(true);
+      return;
+    }
 
     const idString: string = id;
 
