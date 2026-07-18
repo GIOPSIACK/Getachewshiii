@@ -163,7 +163,11 @@ export function Home() {
       }
 
       if (!phone && tg?.requestContact) {
-        await tg.requestContact();
+        try {
+          await tg.requestContact();
+        } catch {
+          // user declined or unavailable
+        }
         const tg2 = (window as any).Telegram?.WebApp;
         const updatedInitData = tg2?.initData || "";
         const updatedFallback = tg2?.initDataUnsafe?.user;
