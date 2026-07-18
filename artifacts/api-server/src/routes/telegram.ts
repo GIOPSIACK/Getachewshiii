@@ -11,7 +11,7 @@ const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET;
 const TG_API = TOKEN ? `https://api.telegram.org/bot${TOKEN}` : "";
 const WEBAPP_URL = process.env.TELEGRAM_WEBAPP_URL || "https://gech-ev-ekub-phi.vercel.app";
 
-type Step = "idle" | "await_lucky" | "await_qty" | "await_method" | "await_sender" | "confirm";
+type Step = "idle" | "await_lucky" | "await_qty" | "await_method" | "await_sender" | "confirm" | "await_contact_from_webapp";
 interface BotState {
   step: Step;
   campaignId?: number;
@@ -227,6 +227,11 @@ async function handleUpdate(u: any) {
     const chatId = u.message.chat.id;
     const telegramId = String(u.message.from.id);
     const phone = u.message.contact.phone_number;
+    
+    // Check if this was triggered from the web app
+    const reg = await getReg(telegramId);
+    const wasFromWebApp = (reg?.botState as BotState)?.step === "await_contact_from_webapp";
+    
     await db
       .insert(registrationsTable)
       .values({
@@ -238,14 +243,26 @@ async function handleUpdate(u: any) {
       })
       .onConflictDoUpdate({
         target: registrationsTable.telegramId,
-        set: { phone, updatedAt: new Date() },
+        set: { phone, botState: { step: "idle" }, updatedAt: new Date() },
       });
-    await tg("sendMessage", {
-      chat_id: chatId,
-      text: `\u2705 Registered with phone ${phone}!`,
-      reply_markup: { remove_keyboard: true },
-    });
-    await sendWebAppButton(chatId);
+    
+    if (wasFromWebApp) {
+      await tg("sendMessage", {
+        chat_id: chatId,
+        text: `\u2705 Phone number saved! Returning to the app...`,
+        reply_markup: { remove_keyboard: true },
+      });
+      // Small delay then send web app button
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await sendWebAppButton(chatId);
+    } else {
+      await tg("sendMessage", {
+        chat_id: chatId,
+        text: `\u2705 Registered with phone ${phone}!`,
+        reply_markup: { remove_keyboard: true },
+      });
+      await sendWebAppButton(chatId);
+    }
     return;
   }
 
@@ -256,6 +273,28 @@ async function handleUpdate(u: any) {
 
   if (text === "/start") {
     await ensureReg(u);
+    const reg = await getReg(telegramId);
+    if (!reg?.phone) {
+      await askContact(chatId);
+    } else {
+      await sendWebAppButton(chatId);
+    }
+    return;
+  }
+  
+  // Handle /start with parameter (e.g., /start share_phone)
+  if (text.startsWith("/start ")) {
+    const param = text.split(" ")[1];
+    await ensureReg(u);
+    
+    if (param === "share_phone") {
+      // Store context that this is from web app
+      await setState(telegramId, { step: "await_contact_from_webapp" });
+      await askContact(chatId);
+      return;
+    }
+    
+    // Default behavior for other parameters
     const reg = await getReg(telegramId);
     if (!reg?.phone) {
       await askContact(chatId);
