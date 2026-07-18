@@ -20709,27 +20709,27 @@ var require_router = __commonJS({
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
-    module.exports = Router10;
+    module.exports = Router11;
     module.exports.Route = Route;
-    function Router10(options) {
-      if (!(this instanceof Router10)) {
-        return new Router10(options);
+    function Router11(options) {
+      if (!(this instanceof Router11)) {
+        return new Router11(options);
       }
       const opts = options || {};
-      function router10(req, res, next) {
-        router10.handle(req, res, next);
+      function router11(req, res, next) {
+        router11.handle(req, res, next);
       }
-      Object.setPrototypeOf(router10, this);
-      router10.caseSensitive = opts.caseSensitive;
-      router10.mergeParams = opts.mergeParams;
-      router10.params = {};
-      router10.strict = opts.strict;
-      router10.stack = [];
-      return router10;
+      Object.setPrototypeOf(router11, this);
+      router11.caseSensitive = opts.caseSensitive;
+      router11.mergeParams = opts.mergeParams;
+      router11.params = {};
+      router11.strict = opts.strict;
+      router11.stack = [];
+      return router11;
     }
-    Router10.prototype = function() {
+    Router11.prototype = function() {
     };
-    Router10.prototype.param = function param(name, fn) {
+    Router11.prototype.param = function param(name, fn) {
       if (!name) {
         throw new TypeError("argument name is required");
       }
@@ -20749,7 +20749,7 @@ var require_router = __commonJS({
       params.push(fn);
       return this;
     };
-    Router10.prototype.handle = function handle(req, res, callback) {
+    Router11.prototype.handle = function handle(req, res, callback) {
       if (!callback) {
         throw new TypeError("argument callback is required");
       }
@@ -20876,7 +20876,7 @@ var require_router = __commonJS({
         }
       }
     };
-    Router10.prototype.use = function use(handler) {
+    Router11.prototype.use = function use(handler) {
       let offset = 0;
       let path = "/";
       if (typeof handler !== "function") {
@@ -20909,7 +20909,7 @@ var require_router = __commonJS({
       }
       return this;
     };
-    Router10.prototype.route = function route(path) {
+    Router11.prototype.route = function route(path) {
       const route2 = new Route(path);
       const layer = new Layer(path, {
         sensitive: this.caseSensitive,
@@ -20924,7 +20924,7 @@ var require_router = __commonJS({
       return route2;
     };
     methods.concat("all").forEach(function(method) {
-      Router10.prototype[method] = function(path) {
+      Router11.prototype[method] = function(path) {
         const route = this.route(path);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
@@ -21107,13 +21107,13 @@ var require_application = __commonJS({
     var compileTrust = require_utils3().compileTrust;
     var resolve = __require("node:path").resolve;
     var once = require_once();
-    var Router10 = require_router();
+    var Router11 = require_router();
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var app2 = exports = module.exports = {};
     var trustProxyDefaultSymbol = "@@symbol:trust_proxy_default";
     app2.init = function init2() {
-      var router10 = null;
+      var router11 = null;
       this.cache = /* @__PURE__ */ Object.create(null);
       this.engines = /* @__PURE__ */ Object.create(null);
       this.settings = /* @__PURE__ */ Object.create(null);
@@ -21122,13 +21122,13 @@ var require_application = __commonJS({
         configurable: true,
         enumerable: true,
         get: function getrouter() {
-          if (router10 === null) {
-            router10 = new Router10({
+          if (router11 === null) {
+            router11 = new Router11({
               caseSensitive: this.enabled("case sensitive routing"),
               strict: this.enabled("strict routing")
             });
           }
-          return router10;
+          return router11;
         }
       });
     };
@@ -21199,15 +21199,15 @@ var require_application = __commonJS({
       if (fns.length === 0) {
         throw new TypeError("app.use() requires a middleware function");
       }
-      var router10 = this.router;
+      var router11 = this.router;
       fns.forEach(function(fn2) {
         if (!fn2 || !fn2.handle || !fn2.set) {
-          return router10.use(path, fn2);
+          return router11.use(path, fn2);
         }
         debug2(".use app under %s", path);
         fn2.mountpath = path;
         fn2.parent = this;
-        router10.use(path, function mounted_app(req, res, next) {
+        router11.use(path, function mounted_app(req, res, next) {
           var orig = req.app;
           fn2.handle(req, res, function(err) {
             Object.setPrototypeOf(req, orig.request);
@@ -23792,7 +23792,7 @@ var require_express = __commonJS({
     var EventEmitter = __require("node:events").EventEmitter;
     var mixin = require_merge_descriptors();
     var proto = require_application();
-    var Router10 = require_router();
+    var Router11 = require_router();
     var req = require_request();
     var res = require_response();
     exports = module.exports = createApplication;
@@ -23814,8 +23814,8 @@ var require_express = __commonJS({
     exports.application = proto;
     exports.request = req;
     exports.response = res;
-    exports.Route = Router10.Route;
-    exports.Router = Router10;
+    exports.Route = Router11.Route;
+    exports.Router = Router11;
     exports.json = bodyParser.json;
     exports.raw = bodyParser.raw;
     exports.static = require_serve_static();
@@ -40108,12 +40108,12 @@ var init_fileFromPath = __esm({
 });
 
 // src/app.ts
-var import_express10 = __toESM(require_express2(), 1);
+var import_express11 = __toESM(require_express2(), 1);
 var import_cors = __toESM(require_lib3(), 1);
 var import_pino_http = __toESM(require_logger(), 1);
 
 // src/routes/index.ts
-var import_express8 = __toESM(require_express2(), 1);
+var import_express9 = __toESM(require_express2(), 1);
 
 // src/routes/health.ts
 var import_express = __toESM(require_express2(), 1);
@@ -69685,19 +69685,46 @@ router7.post("/telegram", async (req, res) => {
 });
 var auth_default = router7;
 
-// src/routes/index.ts
+// src/routes/phone.ts
+var import_express8 = __toESM(require_express2(), 1);
 var router8 = (0, import_express8.Router)();
-router8.use(health_default);
-router8.use(campaigns_default);
-router8.use(tickets_default);
-router8.use(chat_default);
-router8.use(leaderboard_default);
-router8.use(user_default);
-router8.use("/auth", auth_default);
-var routes_default = router8;
+router8.post("/phone", async (req, res) => {
+  const { telegramId, phone } = req.body || {};
+  if (!telegramId || !phone) {
+    res.status(400).json({ error: "telegramId and phone are required" });
+    return;
+  }
+  try {
+    await db.insert(registrationsTable).values({
+      telegramId: String(telegramId),
+      phone: String(phone),
+      botState: { step: "idle" }
+    }).onConflictDoUpdate({
+      target: registrationsTable.telegramId,
+      set: { phone: String(phone), updatedAt: /* @__PURE__ */ new Date() }
+    });
+    res.json({ ok: true });
+  } catch (e2) {
+    console.error("auth/phone error:", e2);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+var phone_default = router8;
+
+// src/routes/index.ts
+var router9 = (0, import_express9.Router)();
+router9.use(health_default);
+router9.use(campaigns_default);
+router9.use(tickets_default);
+router9.use(chat_default);
+router9.use(leaderboard_default);
+router9.use(user_default);
+router9.use("/auth", auth_default);
+router9.use("/auth", phone_default);
+var routes_default = router9;
 
 // src/routes/telegram.ts
-var import_express9 = __toESM(require_express2(), 1);
+var import_express10 = __toESM(require_express2(), 1);
 var TOKEN2 = process.env.TELEGRAM_BOT_TOKEN;
 if (!TOKEN2) {
   console.warn("TELEGRAM_BOT_TOKEN not set \u2014 /telegram webhook disabled");
@@ -69713,11 +69740,11 @@ async function tg(method, body) {
   });
   return res.json();
 }
-var router9 = (0, import_express9.Router)();
-router9.get("/", (_req, res) => {
+var router10 = (0, import_express10.Router)();
+router10.get("/", (_req, res) => {
   res.json({ ok: true, bot: TOKEN2 ? "configured" : "token missing" });
 });
-router9.post("/", async (req, res) => {
+router10.post("/", async (req, res) => {
   if (WEBHOOK_SECRET && req.headers["x-telegram-bot-api-secret-token"] !== WEBHOOK_SECRET) {
     res.status(401).end();
     return;
@@ -69729,7 +69756,7 @@ router9.post("/", async (req, res) => {
   }
   res.status(200).json({ ok: true });
 });
-var telegram_default = router9;
+var telegram_default = router10;
 async function getReg(telegramId) {
   const [row] = await db.select().from(registrationsTable).where(eq(registrationsTable.telegramId, telegramId));
   return row;
@@ -70017,7 +70044,7 @@ var logger = (0, import_pino.default)({
 });
 
 // src/app.ts
-var app = (0, import_express10.default)();
+var app = (0, import_express11.default)();
 app.use(
   (0, import_pino_http.default)({
     logger,
@@ -70038,8 +70065,8 @@ app.use(
   })
 );
 app.use((0, import_cors.default)());
-app.use(import_express10.default.json());
-app.use(import_express10.default.urlencoded({ extended: true }));
+app.use(import_express11.default.json());
+app.use(import_express11.default.urlencoded({ extended: true }));
 app.use("/api/telegram", telegram_default);
 app.use("/telegram", telegram_default);
 app.use("/api", routes_default);

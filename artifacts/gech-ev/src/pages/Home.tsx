@@ -162,6 +162,26 @@ export function Home() {
         }
       }
 
+      if (!phone && tg?.requestContact) {
+        await tg.requestContact();
+        const tg2 = (window as any).Telegram?.WebApp;
+        const updatedInitData = tg2?.initData || "";
+        const updatedFallback = tg2?.initDataUnsafe?.user;
+        if (updatedInitData || updatedFallback?.id) {
+          const r2 = await fetch("/api/auth/telegram", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ initData: updatedInitData || undefined, fallbackUser: updatedFallback || undefined }),
+          });
+          if (r2.ok) {
+            const data2 = await r2.json();
+            if (data2.user) {
+              phone = data2.user.phone ?? null;
+            }
+          }
+        }
+      }
+
         if (!telegramId && fallbackUser?.id) {
           telegramId = String(fallbackUser.id);
           firstName = fallbackUser.first_name;
