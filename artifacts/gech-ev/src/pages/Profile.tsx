@@ -10,6 +10,10 @@ export function Profile() {
   const phoneIsAvailable = Boolean(user?.phone);
 
   const [didHydrate, setDidHydrate] = useState(false);
+  const [showManualEntry, setShowManualEntry] = useState(false);
+  const [manualPhone, setManualPhone] = useState("");
+  const [isSubmittingPhone, setIsSubmittingPhone] = useState(false);
+  const [phoneError, setPhoneError] = useState("");
 
   const telegramUserId = useMemo(() => {
     const tg = (window as any).Telegram?.WebApp;
@@ -17,6 +21,55 @@ export function Profile() {
     if (!fallbackUser?.id) return null;
     return String(fallbackUser.id);
   }, []);
+
+  const handleManualPhoneSubmit = async () => {
+    if (!manualPhone.trim()) {
+      setPhoneError("Please enter a phone number");
+      return;
+    }
+
+    const phoneRegex = /^[+]?[0-9]{10,15}$/;
+    if (!phoneRegex.test(manualPhone.replace(/\s/g, ""))) {
+      setPhoneError("Please enter a valid phone number");
+      return;
+    }
+
+    const id = user?.telegramId ?? telegramUserId;
+    if (!id) {
+      setPhoneError("Cannot determine your Telegram ID");
+      return;
+    }
+
+    setIsSubmittingPhone(true);
+    setPhoneError("");
+
+    try {
+      const res = await fetch("/api/auth/phone", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ telegramId: id, phone: manualPhone.trim() }),
+      });
+
+      if (res.ok) {
+        setUser({
+          telegramId: id,
+          firstName: user?.firstName ?? null,
+          lastName: null,
+          phone: manualPhone.trim(),
+        });
+        setShowManualEntry(false);
+        setManualPhone("");
+      } else {
+        const data = await res.json();
+        setPhoneError(data.error || "Failed to save phone number");
+      }
+    } catch (error) {
+      console.error("Failed to submit phone:", error);
+      setPhoneError("Network error. Please try again.");
+    } finally {
+      setIsSubmittingPhone(false);
+    }
+  };
 
   useEffect(() => {
     if (phoneIsAvailable) {
@@ -40,7 +93,7 @@ export function Profile() {
     async function hydratePhone() {
       // Wait long enough for the Telegram webhook to persist phone to DB.
       // (Webhook timing can lag behind the user's tap on "Share phone".)
-      for (let attempt = 0; attempt < 30; attempt++) {
+      for (let attempt = 0; attempt < 60; attempt++) {
         if (cancelled) return;
 
         try {
@@ -62,11 +115,11 @@ export function Profile() {
               return;
             }
           }
-        } catch {
-          // ignore and retry
+        } catch (error) {
+          console.error(`Profile: Attempt ${attempt + 1} failed to fetch user:`, error);
         }
 
-        // ~1s between attempts => ~30s total wait
+        // ~1s between attempts => ~60s total wait
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
 
@@ -104,13 +157,60 @@ export function Profile() {
             </div>
           </div>
         ) : didHydrate ? (
-          <div className="bg-card border border-dashed border-border rounded-[1.5rem] p-8 flex flex-col items-center justify-center text-center">
-            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-              <Phone className="w-8 h-8 text-muted-foreground" />
+          showManualEntry ? (
+            <div className="bg-card border border-border rounded-[1.5rem] p-6">
+              <h3 className="font-bold text-base mb-4 text-center">Enter Your Phone Number</h3>
+              <div className="space-y-4">
+                <div>
+                  <input
+                    type="tel"
+                    value={manualPhone}
+                    onChange={(e) => setManualPhone(e.target.value)}
+                    placeholder="+251911234567"
+                    className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    disabled={isSubmittingPhone}
+                  />
+                  {phoneError && (
+                    <p className="text-red-500 text-xs mt-2">{phoneError}</p>
+                  )}
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setShowManualEntry(false);
+                      setManualPhone("");
+                      setPhoneError("");
+                    }}
+                    disabled={isSubmittingPhone}
+                    className="flex-1 px-4 py-3 rounded-xl border border-border bg-muted text-foreground font-medium hover:bg-muted/80 disabled:opacity-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleManualPhoneSubmit}
+                    disabled={isSubmittingPhone}
+                    className="flex-1 px-4 py-3 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                  >
+                    {isSubmittingPhone ? "Saving..." : "Save"}
+                  </button>
+                </div>
+              </div>
             </div>
-            <h3 className="font-bold text-base mb-1">No phone number saved</h3>
-            <p className="text-sm text-muted-foreground">Open the bot and share your phone number to register.</p>
-          </div>
+          ) : (
+            <div className="bg-card border border-dashed border-border rounded-[1.5rem] p-8 flex flex-col items-center justify-center text-center">
+              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                <Phone className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <h3 className="font-bold text-base mb-1">No phone number saved</h3>
+              <p className="text-sm text-muted-foreground mb-4">Open the bot and share your phone number to register.</p>
+              <button
+                onClick={() => setShowManualEntry(true)}
+                className="px-6 py-2.5 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
+              >
+                Enter Manually
+              </button>
+            </div>
+          )
         ) : (
           <div className="bg-card border border-border rounded-[1.5rem] p-8 flex items-center justify-center text-center">
             <p className="text-sm text-muted-foreground">Loading phone number…</p>

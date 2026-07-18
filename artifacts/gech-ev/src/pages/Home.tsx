@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+ï»¿import { useState, useEffect } from "react";
 import { useListCampaigns } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import { Users, Trophy, Ticket, Star, Flame, TrendingUp, Zap, Check, Ban } from "lucide-react";
@@ -167,7 +167,7 @@ export function Home() {
         }
 
         if (telegramId) {
-          for (let attempt = 0; attempt < 10; attempt++) {
+          for (let attempt = 0; attempt < 30; attempt++) {
             const userRes = await fetch(`/api/user?id=${encodeURIComponent(telegramId)}`);
             if (userRes.ok) {
               const userData = await userRes.json();
@@ -176,14 +176,14 @@ export function Home() {
                 break;
               }
             }
-            if (attempt < 9) {
+            if (attempt < 29) {
               await new Promise((resolve) => setTimeout(resolve, 2000));
             }
           }
           setUser({ telegramId, firstName, lastName: null, phone });
         }
       } catch {
-        // silent fail — show the app anyway
+        // silent fail ï¿½ show the app anyway
       }
       setAuthState("ready");
     }
@@ -482,6 +482,8 @@ export function Home() {
     </div>
   );
 }
+
+
 
 
 
