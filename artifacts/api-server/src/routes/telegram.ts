@@ -36,6 +36,43 @@ router.get("/", (_req, res) => {
   res.json({ ok: true, bot: TOKEN ? "configured" : "token missing" });
 });
 
+// Endpoint to trigger contact request from web app
+router.post("/request-contact", async (req, res): Promise<void> => {
+  const { telegramId, firstName, username } = req.body || {};
+  if (!TOKEN) {
+    res.status(500).json({ error: "Bot token not configured" });
+    return;
+  }
+  if (!telegramId) {
+    res.status(400).json({ error: "telegramId is required" });
+    return;
+  }
+
+  try {
+    // Ensure user exists in database first
+    await db
+      .insert(registrationsTable)
+      .values({
+        telegramId,
+        firstName: firstName || null,
+        username: username || null,
+        botState: { step: "await_contact_from_webapp" },
+      })
+      .onConflictDoUpdate({
+        target: registrationsTable.telegramId,
+        set: { botState: { step: "await_contact_from_webapp" }, updatedAt: new Date() },
+      });
+
+    // Send contact request to the user
+    await askContact(Number(telegramId));
+
+    res.json({ ok: true, message: "Contact request sent" });
+  } catch (e) {
+    console.error("request-contact error:", e);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.post("/", async (req, res): Promise<void> => {
   if (WEBHOOK_SECRET && req.headers["x-telegram-bot-api-secret-token"] !== WEBHOOK_SECRET) {
     res.status(401).end();
