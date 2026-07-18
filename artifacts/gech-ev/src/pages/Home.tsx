@@ -146,21 +146,21 @@ export function Home() {
         let firstName: string | null = null;
         let phone: string | null = null;
 
-        if (initData) {
-          const r = await fetch("/api/auth/telegram", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ initData, fallbackUser }),
-          });
-          if (r.ok) {
-            const data = await r.json();
-            if (data.user) {
-              telegramId = data.user.id;
-              firstName = data.user.firstName;
-              phone = data.user.phone ?? null;
-            }
+      if (initData || fallbackUser?.id) {
+        const r = await fetch("/api/auth/telegram", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ initData: initData || undefined, fallbackUser: fallbackUser || undefined }),
+        });
+        if (r.ok) {
+          const data = await r.json();
+          if (data.user) {
+            telegramId = data.user.id;
+            firstName = data.user.firstName;
+            phone = data.user.phone ?? null;
           }
         }
+      }
 
         if (!telegramId && fallbackUser?.id) {
           telegramId = String(fallbackUser.id);
