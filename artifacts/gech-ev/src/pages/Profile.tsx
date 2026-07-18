@@ -1,11 +1,78 @@
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Phone } from "lucide-react";
 import glogoSrc from "@/assets/glogo.jpg";
 import jesterSrc from "@/assets/jester.png";
 
 export function Profile() {
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
   const phone = user?.phone || "";
+
+  const [didHydrate, setDidHydrate] = useState(false);
+
+  const telegramUserId = useMemo(() => {
+    const tg = (window as any).Telegram?.WebApp;
+    const fallbackUser = tg?.initDataUnsafe?.user;
+    if (!fallbackUser?.id) return null;
+    return String(fallbackUser.id);
+  }, []);
+
+  useEffect(() => {
+    const tg = (window as any).Telegram?.WebApp;
+    if (!tg) return;
+
+    // If we already have phone in context, nothing to do.
+    if (phone) {
+      setDidHydrate(true);
+      return;
+    }
+
+    const id = telegramUserId;
+    if (id == null) return;
+
+    const idString: string = id;
+
+    let cancelled = false;
+
+    async function hydratePhone() {
+      for (let attempt = 0; attempt < 10; attempt++) {
+        if (cancelled) return;
+
+        try {
+          const userRes = await fetch(`/api/user?id=${encodeURIComponent(idString)}`);
+          if (userRes.ok) {
+            const userData = await userRes.json();
+            if (userData?.phone) {
+              const nextFirstName: string | null =
+                (userData.firstName ?? user?.firstName ?? null) as string | null;
+
+              setUser({
+                telegramId: idString,
+                firstName: nextFirstName,
+                lastName: null,
+                phone: String(userData.phone),
+              });
+              break;
+            }
+          }
+        } catch {
+          // ignore
+        }
+
+        if (attempt < 9) {
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+        }
+      }
+      if (!cancelled) setDidHydrate(true);
+    }
+
+    hydratePhone();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [telegramUserId, phone, setUser]);
 
   return (
     <div className="flex flex-col flex-1 min-h-[100dvh]">
@@ -29,7 +96,7 @@ export function Profile() {
               <p className="text-xl font-extrabold text-foreground tracking-wide">{phone}</p>
             </div>
           </div>
-        ) : (
+        ) : didHydrate ? (
           <div className="bg-card border border-dashed border-border rounded-[1.5rem] p-8 flex flex-col items-center justify-center text-center">
             <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
               <Phone className="w-8 h-8 text-muted-foreground" />
@@ -37,13 +104,17 @@ export function Profile() {
             <h3 className="font-bold text-base mb-1">No phone number saved</h3>
             <p className="text-sm text-muted-foreground">Open the bot and share your phone number to register.</p>
           </div>
+        ) : (
+          <div className="bg-card border border-border rounded-[1.5rem] p-8 flex items-center justify-center text-center">
+            <p className="text-sm text-muted-foreground">Loading phone numberâ€¦</p>
+          </div>
         )}
       </div>
 
       <div className="pb-24 text-center">
         <img src={jesterSrc} alt="Gech Ekub Jester" className="w-full block mb-3" />
         <p className="text-[11px] text-muted-foreground leading-relaxed px-4">
-          © 2026 Gech EV Makina Ekub. All Rights Reserved.{"\n"}
+          ï¿½ 2026 Gech EV Makina Ekub. All Rights Reserved.{"\n"}
           <span className="text-primary font-medium">Designed & Developed by Gech Team</span>
         </p>
       </div>
