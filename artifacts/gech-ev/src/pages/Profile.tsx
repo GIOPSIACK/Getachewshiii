@@ -14,6 +14,7 @@ export function Profile() {
   const [manualPhone, setManualPhone] = useState("");
   const [isSubmittingPhone, setIsSubmittingPhone] = useState(false);
   const [phoneError, setPhoneError] = useState("");
+  const [pollingError, setPollingError] = useState("");
 
   const telegramUserId = useMemo(() => {
     const tg = (window as any).Telegram?.WebApp;
@@ -71,21 +72,6 @@ export function Profile() {
     }
   };
 
-  const handleRequestContact = () => {
-    const tg = (window as any).Telegram?.WebApp;
-    
-    if (!tg) {
-      console.error("Telegram WebApp not available");
-      return;
-    }
-
-    // Open bot with deep link to trigger contact request
-    const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "GechEkubBot";
-    const deepLink = `https://t.me/${botUsername}?start=share_phone`;
-    
-    tg.openTelegramLink(deepLink);
-  };
-
   useEffect(() => {
     if (phoneIsAvailable) {
       setDidHydrate(true);
@@ -106,6 +92,8 @@ export function Profile() {
     const idString: string = id;
 
     async function hydratePhone() {
+      console.log("Profile: Starting phone hydration for telegramId:", idString);
+      
       // Wait long enough for the Telegram webhook to persist phone to DB.
       // (Webhook timing can lag behind the user's tap on "Share phone".)
       for (let attempt = 0; attempt < 60; attempt++) {
@@ -113,12 +101,17 @@ export function Profile() {
 
         try {
           const userRes = await fetch(`/api/user?id=${encodeURIComponent(idString)}`);
+          console.log(`Profile: Attempt ${attempt + 1} - Response status:`, userRes.status);
+          
           if (userRes.ok) {
             const userData = await userRes.json();
+            console.log(`Profile: Attempt ${attempt + 1} - User data:`, userData);
+            
             if (userData?.phone) {
               const nextFirstName: string | null =
                 (userData.firstName ?? user?.firstName ?? null) as string | null;
 
+              console.log("Profile: Phone found! Setting user state.");
               setUser({
                 telegramId: idString,
                 firstName: nextFirstName,
@@ -128,7 +121,11 @@ export function Profile() {
 
               if (!cancelled) setDidHydrate(true);
               return;
+            } else {
+              console.log(`Profile: Attempt ${attempt + 1} - No phone in response`);
             }
+          } else {
+            console.log(`Profile: Attempt ${attempt + 1} - Request failed with status:`, userRes.status);
           }
         } catch (error) {
           console.error(`Profile: Attempt ${attempt + 1} failed to fetch user:`, error);
@@ -138,6 +135,8 @@ export function Profile() {
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
 
+      console.log("Profile: Polling exhausted - phone not found");
+      setPollingError("Phone number not found in database. Please share it via the bot first.");
       if (!cancelled) setDidHydrate(true);
     }
 
@@ -217,21 +216,16 @@ export function Profile() {
                 <Phone className="w-8 h-8 text-muted-foreground" />
               </div>
               <h3 className="font-bold text-base mb-1">No phone number saved</h3>
-              <p className="text-sm text-muted-foreground mb-4">Share your phone number to register.</p>
-              <div className="flex gap-3">
-                <button
-                  onClick={handleRequestContact}
-                  className="flex-1 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
-                >
-                  Share via Bot
-                </button>
-                <button
-                  onClick={() => setShowManualEntry(true)}
-                  className="flex-1 px-4 py-2.5 rounded-xl border border-border bg-muted text-foreground font-medium hover:bg-muted/80 transition-colors"
-                >
-                  Enter Manually
-                </button>
-              </div>
+              <p className="text-sm text-muted-foreground mb-2">Please share your phone number via the Telegram bot first.</p>
+              {pollingError && (
+                <p className="text-xs text-red-500 mb-4">{pollingError}</p>
+              )}
+              <button
+                onClick={() => setShowManualEntry(true)}
+                className="px-6 py-2.5 rounded-xl border border-border bg-muted text-foreground font-medium hover:bg-muted/80 transition-colors"
+              >
+                Enter Manually (Last Resort)
+              </button>
             </div>
           )
         ) : (
