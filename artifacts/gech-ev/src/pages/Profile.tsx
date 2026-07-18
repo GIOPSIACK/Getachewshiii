@@ -7,6 +7,7 @@ import jesterSrc from "@/assets/jester.png";
 export function Profile() {
   const { user, setUser } = useAuth();
   const phone = user?.phone || "";
+  const phoneIsAvailable = Boolean(user?.phone);
 
   const [didHydrate, setDidHydrate] = useState(false);
 
@@ -18,12 +19,13 @@ export function Profile() {
   }, []);
 
   useEffect(() => {
-    if (phone) {
+    if (phoneIsAvailable) {
       setDidHydrate(true);
       return;
     }
 
-    const id = telegramUserId;
+    // Prefer AuthContext telegramId when available (set by Home).
+    const id = user?.telegramId ?? telegramUserId;
 
     // If we can't determine telegram id yet, avoid infinite loading.
     if (id == null) {
