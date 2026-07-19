@@ -157,6 +157,7 @@ export function Home() {
             if (data.user) {
               telegramId = data.user.id;
               firstName = data.user.firstName;
+              phone = data.user.phone || null;
             }
           }
         }
@@ -167,17 +168,19 @@ export function Home() {
         }
 
         if (telegramId) {
-          for (let attempt = 0; attempt < 30; attempt++) {
-            const userRes = await fetch(`/api/user?id=${encodeURIComponent(telegramId)}`);
-            if (userRes.ok) {
-              const userData = await userRes.json();
-              if (userData.phone) {
-                phone = userData.phone;
-                break;
+          if (!phone) {
+            for (let attempt = 0; attempt < 30; attempt++) {
+              const userRes = await fetch(`/api/user?id=${encodeURIComponent(telegramId)}`);
+              if (userRes.ok) {
+                const userData = await userRes.json();
+                if (userData.phone) {
+                  phone = userData.phone;
+                  break;
+                }
               }
-            }
-            if (attempt < 29) {
-              await new Promise((resolve) => setTimeout(resolve, 2000));
+              if (attempt < 29) {
+                await new Promise((resolve) => setTimeout(resolve, 2000));
+              }
             }
           }
           setUser({ telegramId, firstName, lastName: null, phone });
@@ -482,6 +485,11 @@ export function Home() {
     </div>
   );
 }
+
+
+
+
+
 
 
 

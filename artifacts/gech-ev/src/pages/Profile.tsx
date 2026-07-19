@@ -9,13 +9,11 @@ export function Profile() {
   const phone = user?.phone || "";
   const phoneIsAvailable = Boolean(user?.phone);
 
-  const [didHydrate, setDidHydrate] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [manualPhone, setManualPhone] = useState("");
   const [isSubmittingPhone, setIsSubmittingPhone] = useState(false);
   const [phoneError, setPhoneError] = useState("");
-  const [pollingError, setPollingError] = useState("");
-  const [debugInfo, setDebugInfo] = useState("");
+  const [waitingForPhone, setWaitingForPhone] = useState(true);
 
   const telegramUserId = useMemo(() => {
     const tg = (window as any).Telegram?.WebApp;
@@ -75,75 +73,26 @@ export function Profile() {
 
   useEffect(() => {
     if (phoneIsAvailable) {
-      setDidHydrate(true);
+      setWaitingForPhone(false);
       return;
     }
 
-    // Prefer AuthContext telegramId when available (set by Home).
-    const id = user?.telegramId ?? telegramUserId;
+    let timeout: ReturnType<typeof setTimeout>;
 
-    // If we can't determine telegram id yet, avoid infinite loading.
-    if (id == null) {
-      setDidHydrate(true);
-      return;
+    if (user?.telegramId) {
+      // Home.tsx finished its polling but didn't find a phone
+      setWaitingForPhone(false);
+    } else {
+      // No user yet — Home.tsx is still processing or Telegram.WebApp isn't available
+      // Wait a bit then fall back
+      timeout = setTimeout(() => {
+        setWaitingForPhone(false);
+      }, 3000);
     }
 
-    let cancelled = false;
-
-    const idString: string = id;
-
-    async function hydratePhone() {
-      setDebugInfo(`Starting hydration for ID: ${idString}`);
-      
-      // Wait long enough for the Telegram webhook to persist phone to DB.
-      // (Webhook timing can lag behind the user's tap on "Share phone".)
-      for (let attempt = 0; attempt < 60; attempt++) {
-        if (cancelled) return;
-
-        try {
-          const userRes = await fetch(`/api/user?id=${encodeURIComponent(idString)}`);
-          
-          if (userRes.ok) {
-            const userData = await userRes.json();
-            setDebugInfo(`Attempt ${attempt + 1}/60: Got response - Phone: ${userData?.phone || 'null'}`);
-            
-            if (userData?.phone) {
-              const nextFirstName: string | null =
-                (userData.firstName ?? user?.firstName ?? null) as string | null;
-
-              setUser({
-                telegramId: idString,
-                firstName: nextFirstName,
-                lastName: null,
-                phone: String(userData.phone),
-              });
-
-              if (!cancelled) setDidHydrate(true);
-              return;
-            }
-          } else {
-            setDebugInfo(`Attempt ${attempt + 1}/60: Request failed (${userRes.status})`);
-          }
-        } catch (error) {
-          setDebugInfo(`Attempt ${attempt + 1}/60: Error - ${error}`);
-        }
-
-        // ~1s between attempts => ~60s total wait
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-      }
-
-      setDebugInfo("Polling exhausted - no phone found");
-      setPollingError("Phone number not found in database. Please share it via the bot first.");
-      if (!cancelled) setDidHydrate(true);
-    }
-
-    hydratePhone();
-
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [telegramUserId, phone, setUser]);
+    return () => clearTimeout(timeout);
+    // user?.telegramId triggers re-run when Home.tsx calls setUser late
+  }, [phoneIsAvailable, user?.telegramId, setUser]);
 
   return (
     <div className="flex flex-col flex-1 min-h-[100dvh]">
@@ -167,7 +116,7 @@ export function Profile() {
               <p className="text-xl font-extrabold text-foreground tracking-wide">{phone}</p>
             </div>
           </div>
-        ) : didHydrate ? (
+        ) : !waitingForPhone ? (
           showManualEntry ? (
             <div className="bg-card border border-border rounded-[1.5rem] p-6">
               <h3 className="font-bold text-base mb-4 text-center">Enter Your Phone Number</h3>
@@ -214,18 +163,6 @@ export function Profile() {
               </div>
               <h3 className="font-bold text-base mb-1">No phone number saved</h3>
               <p className="text-sm text-muted-foreground mb-2">Please share your phone number via the Telegram bot first.</p>
-              
-              {debugInfo && (
-                <div className="mt-4 p-3 bg-muted rounded-lg text-xs text-left w-full">
-                  <p className="font-semibold mb-1">Debug Info:</p>
-                  <p className="text-muted-foreground">{debugInfo}</p>
-                </div>
-              )}
-              
-              {pollingError && (
-                <p className="text-xs text-red-500 mb-4">{pollingError}</p>
-              )}
-              
               <button
                 onClick={() => setShowManualEntry(true)}
                 className="px-6 py-2.5 rounded-xl border border-border bg-muted text-foreground font-medium hover:bg-muted/80 transition-colors"
