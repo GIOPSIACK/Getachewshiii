@@ -22,6 +22,8 @@ export function Profile() {
     return String(fallbackUser.id);
   }, []);
 
+  const telegramId = user?.telegramId ?? telegramUserId;
+
   const handleManualPhoneSubmit = async () => {
     if (!manualPhone.trim()) {
       setPhoneError("Please enter a phone number");
@@ -34,7 +36,7 @@ export function Profile() {
       return;
     }
 
-    const id = user?.telegramId ?? telegramUserId;
+    const id = telegramId;
     if (!id) {
       setPhoneError("Cannot determine your Telegram ID");
       return;
@@ -77,22 +79,69 @@ export function Profile() {
       return;
     }
 
-    let timeout: ReturnType<typeof setTimeout>;
-
-    if (user?.telegramId) {
-      // Home.tsx finished its polling but didn't find a phone
+    if (!telegramId) {
       setWaitingForPhone(false);
-    } else {
-      // No user yet — Home.tsx is still processing or Telegram.WebApp isn't available
-      // Wait a bit then fall back
-      timeout = setTimeout(() => {
-        setWaitingForPhone(false);
-      }, 3000);
+      return;
     }
 
-    return () => clearTimeout(timeout);
-    // user?.telegramId triggers re-run when Home.tsx calls setUser late
-  }, [phoneIsAvailable, user?.telegramId, setUser]);
+    let cancelled = false;
+    const idStr = telegramId;
+
+    async function resolvePhone() {
+      // Step 1: authenticate via the Telegram endpoint (upserts user in DB)
+      try {
+        const tg = (window as any).Telegram?.WebApp;
+        const initData = tg?.initData || "";
+        const fallbackUser = tg?.initDataUnsafe?.user;
+        if (initData || fallbackUser?.id) {
+          await fetch("/api/auth/telegram", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              initData: initData || undefined,
+              fallbackUser: fallbackUser || undefined,
+            }),
+          });
+        }
+      } catch {
+        // auth is optional here — polling will also find the phone
+      }
+
+      // Step 2: poll for phone (up to 65s)
+      for (let attempt = 0; attempt < 65; attempt++) {
+        if (cancelled) return;
+
+        try {
+          const res = await fetch(`/api/user?id=${encodeURIComponent(idStr)}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.phone) {
+              setUser({
+                telegramId: idStr,
+                firstName: data.firstName ?? null,
+                lastName: null,
+                phone: String(data.phone),
+              });
+              if (!cancelled) setWaitingForPhone(false);
+              return;
+            }
+          }
+        } catch {
+          // retry
+        }
+
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+
+      if (!cancelled) setWaitingForPhone(false);
+    }
+
+    resolvePhone();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [phoneIsAvailable, telegramId, setUser]);
 
   return (
     <div className="flex flex-col flex-1 min-h-[100dvh]">
