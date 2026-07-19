@@ -9,6 +9,10 @@ export function Profile() {
   const phone = user?.phone || "";
   const phoneIsAvailable = Boolean(user?.phone);
 
+  const [debugLogs, setDebugLogs] = useState<string[]>([]);
+
+  const addLog = (msg: string) => setDebugLogs(prev => [...prev, msg]);
+
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [manualPhone, setManualPhone] = useState("");
   const [isSubmittingPhone, setIsSubmittingPhone] = useState(false);
@@ -75,11 +79,17 @@ export function Profile() {
 
   useEffect(() => {
     if (phoneIsAvailable) {
+      addLog("Phone already available in AuthContext");
       setWaitingForPhone(false);
       return;
     }
 
+    addLog(`AuthContext user: ${JSON.stringify(user)}`);
+    addLog(`Telegram.WebApp user ID: ${telegramUserId || "(not available)"}`);
+    addLog(`telegramId resolved: ${telegramId || "(null)"}`);
+
     if (!telegramId) {
+      addLog("No telegram ID found from any source — showing fallback");
       setWaitingForPhone(false);
       return;
     }
@@ -89,12 +99,14 @@ export function Profile() {
 
     async function resolvePhone() {
       // Step 1: authenticate via the Telegram endpoint (upserts user in DB)
+      const tg = (window as any).Telegram?.WebApp;
+      const initData = tg?.initData || "";
+      const fallbackUser = tg?.initDataUnsafe?.user;
+      addLog(`WebApp available: ${!!tg}, initData length: ${initData.length}, fallbackUser: ${fallbackUser?.id || "none"}`);
+
       try {
-        const tg = (window as any).Telegram?.WebApp;
-        const initData = tg?.initData || "";
-        const fallbackUser = tg?.initDataUnsafe?.user;
         if (initData || fallbackUser?.id) {
-          await fetch("/api/auth/telegram", {
+          const authRes = await fetch("/api/auth/telegram", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -102,37 +114,43 @@ export function Profile() {
               fallbackUser: fallbackUser || undefined,
             }),
           });
+          const authData = await authRes.json();
+          addLog(`Auth response (${authRes.status}): ${JSON.stringify(authData)}`);
+        } else {
+          addLog("Skipping auth — no initData and no fallbackUser");
         }
-      } catch {
-        // auth is optional here — polling will also find the phone
+      } catch (e: any) {
+        addLog(`Auth fetch error: ${e?.message || e}`);
       }
 
       // Step 2: poll for phone (up to 65s)
+      addLog(`Starting poll for ID: ${idStr}`);
       for (let attempt = 0; attempt < 65; attempt++) {
         if (cancelled) return;
 
         try {
           const res = await fetch(`/api/user?id=${encodeURIComponent(idStr)}`);
-          if (res.ok) {
-            const data = await res.json();
-            if (data.phone) {
-              setUser({
-                telegramId: idStr,
-                firstName: data.firstName ?? null,
-                lastName: null,
-                phone: String(data.phone),
-              });
-              if (!cancelled) setWaitingForPhone(false);
-              return;
-            }
+          const data = await res.json();
+          addLog(`Poll #${attempt + 1}: status=${res.status}, phone=${data?.phone || "null"}, ok=${data?.ok}`);
+          if (res.ok && data.phone) {
+            addLog(`Phone found! Setting user`);
+            setUser({
+              telegramId: idStr,
+              firstName: data.firstName ?? null,
+              lastName: null,
+              phone: String(data.phone),
+            });
+            if (!cancelled) setWaitingForPhone(false);
+            return;
           }
-        } catch {
-          // retry
+        } catch (e: any) {
+          addLog(`Poll #${attempt + 1} error: ${e?.message || e}`);
         }
 
         await new Promise((r) => setTimeout(r, 1000));
       }
 
+      addLog("Polling exhausted — no phone found");
       if (!cancelled) setWaitingForPhone(false);
     }
 
@@ -234,6 +252,21 @@ export function Profile() {
           <span className="text-primary font-medium">Designed & Developed by Gech Team</span>
         </p>
       </div>
+
+      {debugLogs.length > 0 && (
+        <details className="px-4 pb-4" open>
+          <summary className="text-xs font-semibold text-muted-foreground cursor-pointer select-none mb-1">
+            Debug Log ({debugLogs.length} entries)
+          </summary>
+          <div className="bg-black/5 rounded-xl p-3 text-[10px] font-mono text-muted-foreground max-h-48 overflow-y-auto whitespace-pre-wrap break-all">
+            {debugLogs.map((line, i) => (
+              <div key={i} className="py-0.5 border-b border-black/5 last:border-0">
+                {line}
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
     </div>
   );
 }
