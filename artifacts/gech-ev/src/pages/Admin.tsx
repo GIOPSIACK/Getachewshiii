@@ -89,6 +89,7 @@ export function AdminPanel() {
   const [quickWinnerTicket, setQuickWinnerTicket] = useState<Ticket | null>(null);
   const [quickPrize, setQuickPrize] = useState("");
   const [quickPosition, setQuickPosition] = useState("1");
+  const [quickError, setQuickError] = useState<string | null>(null);
   const [winnerTicketSearch, setWinnerTicketSearch] = useState("");
 
   useEffect(() => {
@@ -127,6 +128,7 @@ export function AdminPanel() {
   }, [authed, tab]);
 
   const submitWinner = async (data: WinnerFormState) => {
+    setQuickError(null);
     try {
       const token = sessionStorage.getItem(STORAGE_KEY);
       const res = await fetch("/api/admin/winners", {
@@ -139,16 +141,22 @@ export function AdminPanel() {
           position: parseInt(data.position) || 1,
         }),
       });
-      if (res.ok) {
-        setQuickWinnerTicket(null);
-        setQuickPrize("");
-        setQuickPosition("1");
-        setShowAddWinner(false);
-        setNewWinner({ ticketId: "", campaignId: "", prize: "", position: "1" });
-        loadWinners();
-        refetch();
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        setQuickError(errBody.error || "Failed to save winner");
+        return;
       }
-    } catch {}
+      setQuickWinnerTicket(null);
+      setQuickPrize("");
+      setQuickPosition("1");
+      setQuickError(null);
+      setShowAddWinner(false);
+      setNewWinner({ ticketId: "", campaignId: "", prize: "", position: "1" });
+      loadWinners();
+      refetch();
+    } catch (e: any) {
+      setQuickError(e.message || "Network error");
+    }
   };
 
   const handleQuickWinner = async (e: React.FormEvent) => {
@@ -301,6 +309,11 @@ export function AdminPanel() {
                     </div>
 
                     <form onSubmit={handleQuickWinner} className="space-y-3">
+                      {quickError && (
+                        <div className="bg-destructive/10 border border-destructive/30 rounded-xl px-3 py-2 text-xs text-destructive font-medium">
+                          {quickError}
+                        </div>
+                      )}
                       <div>
                         <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Prize</label>
                         <input
