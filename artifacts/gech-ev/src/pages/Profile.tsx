@@ -26,7 +26,11 @@ export function Profile() {
     return String(fallbackUser.id);
   }, []);
 
-  const telegramId = user?.telegramId ?? telegramUserId;
+  const telegramIdFromUrl = useMemo(() => {
+    return new URLSearchParams(window.location.search).get("telegramId") || null;
+  }, []);
+
+  const telegramId = user?.telegramId ?? telegramUserId ?? telegramIdFromUrl;
 
   const handleManualPhoneSubmit = async () => {
     if (!manualPhone.trim()) {
@@ -101,7 +105,9 @@ export function Profile() {
       // Step 1: authenticate via the Telegram endpoint (upserts user in DB)
       const tg = (window as any).Telegram?.WebApp;
       const initData = tg?.initData || "";
-      const fallbackUser = tg?.initDataUnsafe?.user;
+      const tgFallbackUser = tg?.initDataUnsafe?.user;
+      const urlFallbackUser = telegramIdFromUrl ? { id: telegramIdFromUrl, first_name: "User" } : null;
+      const fallbackUser = tgFallbackUser ?? urlFallbackUser;
       addLog(`WebApp available: ${!!tg}, initData length: ${initData.length}, fallbackUser: ${fallbackUser?.id || "none"}`);
 
       try {

@@ -129,16 +129,24 @@ export function Home() {
 
   useEffect(() => {
     const tg = (window as any).Telegram?.WebApp;
-    if (!tg) {
+    const urlTelegramId = new URLSearchParams(window.location.search).get("telegramId");
+
+    if (!tg && !urlTelegramId) {
       setAuthState("ready");
       return;
     }
 
-    tg.ready();
-    tg.expand();
+    let initData = "";
+    let fallbackUser: { id: string; first_name: string } | null = null;
 
-    const initData = tg.initData || "";
-    const fallbackUser = tg.initDataUnsafe?.user;
+    if (tg) {
+      tg.ready();
+      tg.expand();
+      initData = tg.initData || "";
+      fallbackUser = tg.initDataUnsafe?.user ?? null;
+    } else {
+      fallbackUser = { id: urlTelegramId!, first_name: "User" };
+    }
 
     async function register() {
       try {
@@ -186,7 +194,7 @@ export function Home() {
           setUser({ telegramId, firstName, lastName: null, phone });
         }
       } catch {
-        // silent fail � show the app anyway
+        // silent fail — show the app anyway
       }
       setAuthState("ready");
     }

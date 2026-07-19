@@ -127,12 +127,6 @@ const CONTACT_KEYBOARD = {
   one_time_keyboard: true,
 };
 
-const WEBAPP_INLINE_KEYBOARD = {
-  inline_keyboard: [
-    [{ text: "🎯 Open Lottery App", web_app: { url: WEBAPP_URL } }],
-  ],
-};
-
 async function askContact(chatId: number) {
   await tg("sendMessage", {
     chat_id: chatId,
@@ -142,10 +136,15 @@ async function askContact(chatId: number) {
 }
 
 async function sendWebAppButton(chatId: number) {
+  const url = `${WEBAPP_URL}?telegramId=${chatId}`;
   await tg("sendMessage", {
     chat_id: chatId,
     text: "✅ Number saved! Tap the button below to open the lottery app.",
-    reply_markup: WEBAPP_INLINE_KEYBOARD,
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "🎯 Open Lottery App", web_app: { url } }],
+      ],
+    },
   });
 }
 
