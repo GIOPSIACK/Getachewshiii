@@ -137,15 +137,13 @@ export function Home() {
     }
 
     let initData = "";
-    let fallbackUser: { id: string; first_name: string } | null = null;
+    let fallbackUser: { id: string; first_name?: string; username?: string } | null = null;
 
     if (tg) {
       tg.ready();
       tg.expand();
       initData = tg.initData || "";
       fallbackUser = tg.initDataUnsafe?.user ?? null;
-    } else {
-      fallbackUser = { id: urlTelegramId!, first_name: "User" };
     }
 
     async function register() {
@@ -154,7 +152,7 @@ export function Home() {
         let firstName: string | null = null;
         let phone: string | null = null;
 
-        if (initData || fallbackUser?.id) {
+        if (tg && (initData || fallbackUser?.id)) {
           const r = await fetch("/api/auth/telegram", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -172,7 +170,11 @@ export function Home() {
 
         if (!telegramId && fallbackUser?.id) {
           telegramId = String(fallbackUser.id);
-          firstName = fallbackUser.first_name;
+          firstName = fallbackUser.first_name ?? null;
+        }
+
+        if (!telegramId && urlTelegramId) {
+          telegramId = urlTelegramId;
         }
 
         if (telegramId) {

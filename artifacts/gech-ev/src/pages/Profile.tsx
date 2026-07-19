@@ -103,30 +103,34 @@ export function Profile() {
 
     async function resolvePhone() {
       // Step 1: authenticate via the Telegram endpoint (upserts user in DB)
+      // Only call when Telegram.WebApp is available (avoid overwriting real names with synthetic data)
       const tg = (window as any).Telegram?.WebApp;
       const initData = tg?.initData || "";
       const tgFallbackUser = tg?.initDataUnsafe?.user;
-      const urlFallbackUser = telegramIdFromUrl ? { id: telegramIdFromUrl, first_name: "User" } : null;
-      const fallbackUser = tgFallbackUser ?? urlFallbackUser;
-      addLog(`WebApp available: ${!!tg}, initData length: ${initData.length}, fallbackUser: ${fallbackUser?.id || "none"}`);
+      const fallbackUser = tgFallbackUser ?? null;
+      addLog(`WebApp available: ${!!tg}, initData length: ${initData.length}, fallbackUser: ${fallbackUser?.id || "none"}, urlTelegramId: ${telegramIdFromUrl || "none"}`);
 
-      try {
-        if (initData || fallbackUser?.id) {
-          const authRes = await fetch("/api/auth/telegram", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              initData: initData || undefined,
-              fallbackUser: fallbackUser || undefined,
-            }),
-          });
-          const authData = await authRes.json();
-          addLog(`Auth response (${authRes.status}): ${JSON.stringify(authData)}`);
-        } else {
-          addLog("Skipping auth — no initData and no fallbackUser");
+      if (tg) {
+        try {
+          if (initData || fallbackUser?.id) {
+            const authRes = await fetch("/api/auth/telegram", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                initData: initData || undefined,
+                fallbackUser: fallbackUser || undefined,
+              }),
+            });
+            const authData = await authRes.json();
+            addLog(`Auth response (${authRes.status}): ${JSON.stringify(authData)}`);
+          } else {
+            addLog("Skipping auth — no initData and no fallbackUser from WebApp");
+          }
+        } catch (e: any) {
+          addLog(`Auth fetch error: ${e?.message || e}`);
         }
-      } catch (e: any) {
-        addLog(`Auth fetch error: ${e?.message || e}`);
+      } else {
+        addLog("Skipping auth — Telegram.WebApp not available, using URL telegramId directly");
       }
 
       // Step 2: poll for phone (up to 65s)
