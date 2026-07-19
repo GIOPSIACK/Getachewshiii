@@ -122,7 +122,7 @@ export const createTicketBodyBuyerPhoneMin = 9;
 
 export const createTicketBodyQuantityMax = 10;
 
-export const createTicketBodySenderAccountMin = 5;
+export const createTicketBodySenderAccountMin = 1;
 
 
 

@@ -44091,7 +44091,7 @@ var ListTicketsResponse = arrayType(ListTicketsResponseItem);
 var createTicketBodyBuyerNameMin = 2;
 var createTicketBodyBuyerPhoneMin = 9;
 var createTicketBodyQuantityMax = 10;
-var createTicketBodySenderAccountMin = 5;
+var createTicketBodySenderAccountMin = 1;
 var CreateTicketBody = objectType({
   "campaignId": numberType(),
   "buyerName": stringType().min(createTicketBodyBuyerNameMin),

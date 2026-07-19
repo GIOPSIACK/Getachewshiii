@@ -383,7 +383,7 @@ components:
           enum: [telebirr, cbe]
         senderAccount:
           type: string
-          minLength: 5
+          minLength: 1
         receiptImageUrl:
           type: ["string", "null"]
       required:

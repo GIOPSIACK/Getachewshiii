@@ -69,8 +69,11 @@ export function Checkout() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const [submitError, setSubmitError] = useState("");
+
   const handleSubmit = async () => {
     setIsSubmitting(true);
+    setSubmitError("");
     try {
       const result = await createTicket.mutateAsync({
         data: {
@@ -80,13 +83,14 @@ export function Checkout() {
           quantity: state.quantity,
           luckyNumbers: state.luckyNumbers,
           paymentMethod: state.paymentMethod,
-          senderAccount: state.senderAccount || "N/A",
+          senderAccount: state.senderAccount || "N/A (not provided)",
           receiptImageUrl: state.receiptImageUrl,
         },
       });
       setLocation(`/success?ticket=${result.ticketNumber}`);
-    } catch {
-      setLocation(`/success?ticket=%23${Math.floor(100 + Math.random() * 900)}`);
+    } catch (err: any) {
+      const msg = err?.message || "Purchase failed. Please try again.";
+      setSubmitError(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -352,8 +356,7 @@ export function Checkout() {
             {/* Sender account */}
             <div>
               <label className="block text-sm font-semibold text-foreground mb-2">
-                Sender Account Number{" "}
-                <span className="font-normal text-muted-foreground">(Optional)</span>
+                Sender Account Number
               </label>
               <input
                 type="text"
@@ -424,6 +427,11 @@ export function Checkout() {
         )}
       </div>
 
+      {submitError && (
+        <div className="mx-4 p-3 bg-destructive/10 border border-destructive/30 rounded-xl text-xs text-destructive font-medium">
+          {submitError}
+        </div>
+      )}
       {/* Footer */}
       <div className="p-4 flex gap-3">
         <button
