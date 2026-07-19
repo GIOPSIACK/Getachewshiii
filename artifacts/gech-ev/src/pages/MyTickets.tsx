@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useListTickets, useGetTicketStats } from "@workspace/api-client-react";
-import { Search, Ticket as TicketIcon, Clock, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { Search, Ticket as TicketIcon, Clock, CheckCircle2, XCircle, AlertCircle, Trophy } from "lucide-react";
 import bydImage from "@/assets/byd-yuan-up.jpg";
 import glogoSrc from "@/assets/glogo.jpg";
 import activeStatIcon from "@/assets/icons/stat-active.svg";
@@ -215,11 +215,22 @@ export function MyTickets() {
                     </div>
                   )}
                   {isActive && (
-                    <div className="flex items-center justify-center gap-2 bg-primary/5 rounded-xl py-2 px-3">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
-                      <span className="text-[11px] font-medium text-primary">
-                        Ticket confirmed & active
-                      </span>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-center gap-2 bg-primary/5 rounded-xl py-2 px-3">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
+                        <span className="text-[11px] font-medium text-primary">
+                          Ticket confirmed & active
+                        </span>
+                      </div>
+                      <a
+                        href={`/result/${ticket.id}`}
+                        className="flex items-center justify-center gap-2 bg-yellow-400/10 border border-yellow-300/30 rounded-xl py-2.5 px-3 hover:bg-yellow-400/20 active:scale-[0.98] transition-all"
+                      >
+                        <Trophy className="w-4 h-4 text-yellow-600 shrink-0" />
+                        <span className="text-[12px] font-bold text-yellow-700">
+                          Check Result
+                        </span>
+                      </a>
                     </div>
                   )}
                 </div>

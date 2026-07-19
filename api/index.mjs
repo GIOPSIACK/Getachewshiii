@@ -44269,6 +44269,68 @@ var AdminListTicketsResponseItem = objectType({
 });
 var AdminListTicketsResponse = arrayType(AdminListTicketsResponseItem);
 
+var GetTicketResultParams = objectType({
+  "id": coerce.number()
+});
+
+var GetTicketResultResponse = objectType({
+  "won": booleanType(),
+  "prize": stringType().nullish(),
+  "position": numberType().nullish(),
+  "ticket": objectType({
+    "id": numberType(),
+    "ticketNumber": stringType(),
+    "luckyNumbers": arrayType(numberType())
+  }),
+  "campaign": objectType({
+    "id": numberType(),
+    "title": stringType(),
+    "vehicleModel": stringType(),
+    "vehicleYear": numberType(),
+    "imageUrl": stringType().nullish(),
+    "drawDate": coerce.date(),
+    "status": enumType(["active", "completed", "cancelled"])
+  })
+});
+
+var AdminCreateWinnerBody = objectType({
+  "ticketId": numberType(),
+  "campaignId": numberType(),
+  "prize": stringType(),
+  "position": numberType().optional().default(1)
+});
+
+var AdminCreateWinnerResponse = objectType({
+  "id": numberType(),
+  "ticketId": numberType(),
+  "campaignId": numberType(),
+  "prize": stringType(),
+  "position": numberType()
+});
+
+var AdminListWinnersQueryParams = objectType({
+  "campaignId": coerce.number().optional()
+});
+
+var AdminListWinnersResponse = arrayType(objectType({
+  "id": numberType(),
+  "ticketId": numberType(),
+  "campaignId": numberType(),
+  "position": numberType(),
+  "prize": stringType(),
+  "createdAt": coerce.date(),
+  "ticket": objectType({
+    "id": numberType(),
+    "ticketNumber": stringType(),
+    "buyerName": stringType(),
+    "buyerPhone": stringType()
+  })
+}));
+
+var AdminDeleteWinnerParams = objectType({
+  "id": coerce.number()
+});
+
 // src/routes/health.ts
 var router = (0, import_express.Router)();
 router.get("/healthz", (_req, res) => {
@@ -51255,7 +51317,8 @@ __export(schema_exports, {
   insertCampaignSchema: () => insertCampaignSchema,
   insertTicketSchema: () => insertTicketSchema,
   registrationsTable: () => registrationsTable,
-  ticketsTable: () => ticketsTable
+  ticketsTable: () => ticketsTable,
+  winnersTable: () => winnersTable
 });
 
 // ../../node_modules/.pnpm/zod@3.25.76/node_modules/zod/v4/classic/external.js
@@ -62681,6 +62744,17 @@ var ticketsTable = pgTable("tickets", {
 });
 var insertTicketSchema = createInsertSchema(ticketsTable).omit({ id: true, createdAt: true });
 
+var winnersTable = pgTable("winners", {
+  id: serial("id").primaryKey(),
+  ticketId: integer("ticket_id").notNull(),
+  campaignId: integer("campaign_id").notNull(),
+  position: integer("position").notNull().default(1),
+  prize: text("prize").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull()
+});
+var insertWinnerSchema = createInsertSchema(winnersTable).omit({ id: true, createdAt: true });
+
+
 // ../../lib/db/src/schema/registrations.ts
 var registrationsTable = pgTable("registrations", {
   id: serial("id").primaryKey(),
@@ -62888,6 +62962,75 @@ router3.get("/admin/tickets", requireAdmin, async (req, res) => {
   const shaped = await Promise.all(tickets.map(shapeTicket));
   res.json(AdminListTicketsResponse.parse(shaped));
 });
+
+router3.get("/tickets/:id/result", async (req, res) => {
+  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const parsed = GetTicketResultParams.safeParse({ id: raw });
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const [ticket] = await db.select().from(ticketsTable).where(eq(ticketsTable.id, parsed.data.id));
+  if (!ticket) {
+    res.status(404).json({ error: "Ticket not found" });
+    return;
+  }
+  const [campaign] = await db.select().from(campaignsTable).where(eq(campaignsTable.id, ticket.campaignId));
+  if (!campaign) {
+    res.status(404).json({ error: "Campaign not found" });
+    return;
+  }
+  const [winner] = await db.select().from(winnersTable).where(and(eq(winnersTable.ticketId, ticket.id), eq(winnersTable.campaignId, campaign.id)));
+  const won = !!winner;
+  res.json(GetTicketResultResponse.parse({
+    won,
+    prize: winner?.prize ?? null,
+    position: winner?.position ?? null,
+    ticket: { id: ticket.id, ticketNumber: ticket.ticketNumber, luckyNumbers: JSON.parse(ticket.luckyNumbers) },
+    campaign: { id: campaign.id, title: campaign.title, vehicleModel: campaign.vehicleModel, vehicleYear: campaign.vehicleYear, imageUrl: campaign.imageUrl, drawDate: campaign.drawDate, status: campaign.status }
+  }));
+});
+router3.post("/admin/winners", requireAdmin, async (req, res) => {
+  const body = AdminCreateWinnerBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+  const [winner] = await db.insert(winnersTable).values({ ticketId: body.data.ticketId, campaignId: body.data.campaignId, prize: body.data.prize, position: body.data.position ?? 1 }).returning();
+  res.status(201).json(AdminCreateWinnerResponse.parse(winner));
+});
+router3.get("/admin/winners", requireAdmin, async (req, res) => {
+  const parsed = AdminListWinnersQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  let query = db.select().from(winnersTable);
+  if (parsed.data.campaignId) {
+    query = query.where(eq(winnersTable.campaignId, parsed.data.campaignId));
+  }
+  const winners = await query;
+  const enriched = await Promise.all(winners.map(async (w) => {
+    const [ticket] = await db.select({ id: ticketsTable.id, ticketNumber: ticketsTable.ticketNumber, buyerName: ticketsTable.buyerName, buyerPhone: ticketsTable.buyerPhone }).from(ticketsTable).where(eq(ticketsTable.id, w.ticketId));
+    return { ...w, ticket: ticket ?? { id: w.ticketId, ticketNumber: "N/A", buyerName: "Unknown", buyerPhone: "Unknown" } };
+  }));
+  res.json(AdminListWinnersResponse.parse(enriched));
+});
+router3.delete("/admin/winners/:id", requireAdmin, async (req, res) => {
+  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const parsed = AdminDeleteWinnerParams.safeParse({ id: raw });
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const [deleted] = await db.delete(winnersTable).where(eq(winnersTable.id, parsed.data.id)).returning();
+  if (!deleted) {
+    res.status(404).json({ error: "Winner not found" });
+    return;
+  }
+  res.json({ success: true });
+});
+
 var tickets_default = router3;
 
 // src/routes/chat.ts

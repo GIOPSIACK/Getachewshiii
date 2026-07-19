@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and } from "drizzle-orm";
-import { db, campaignsTable, ticketsTable } from "@workspace/db";
+import { db, campaignsTable, ticketsTable, winnersTable } from "@workspace/db";
 import { requireAdmin } from "../lib/adminAuth";
 import {
   ListTicketsQueryParams,
@@ -18,6 +18,13 @@ import {
   UploadReceiptResponse,
   AdminListTicketsQueryParams,
   AdminListTicketsResponse,
+  GetTicketResultParams,
+  GetTicketResultResponse,
+  AdminCreateWinnerBody,
+  AdminCreateWinnerResponse,
+  AdminListWinnersQueryParams,
+  AdminListWinnersResponse,
+  AdminDeleteWinnerParams,
 } from "@workspace/api-zod";
 import * as fs from "fs";
 import * as path from "path";
@@ -229,6 +236,144 @@ router.get("/admin/tickets", requireAdmin, async (req, res): Promise<void> => {
 
   const shaped = await Promise.all(tickets.map(shapeTicket));
   res.json(AdminListTicketsResponse.parse(shaped));
+});
+
+// GET /tickets/:id/result
+router.get("/tickets/:id/result", async (req, res): Promise<void> => {
+  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const parsed = GetTicketResultParams.safeParse({ id: raw });
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const [ticket] = await db
+    .select()
+    .from(ticketsTable)
+    .where(eq(ticketsTable.id, parsed.data.id));
+
+  if (!ticket) {
+    res.status(404).json({ error: "Ticket not found" });
+    return;
+  }
+
+  const [campaign] = await db
+    .select()
+    .from(campaignsTable)
+    .where(eq(campaignsTable.id, ticket.campaignId));
+
+  if (!campaign) {
+    res.status(404).json({ error: "Campaign not found" });
+    return;
+  }
+
+  // Check if this ticket is a winner
+  const [winner] = await db
+    .select()
+    .from(winnersTable)
+    .where(and(
+      eq(winnersTable.ticketId, ticket.id),
+      eq(winnersTable.campaignId, campaign.id),
+    ));
+
+  const won = !!winner;
+
+  res.json(GetTicketResultResponse.parse({
+    won,
+    prize: winner?.prize ?? null,
+    position: winner?.position ?? null,
+    ticket: {
+      id: ticket.id,
+      ticketNumber: ticket.ticketNumber,
+      luckyNumbers: JSON.parse(ticket.luckyNumbers) as number[],
+    },
+    campaign: {
+      id: campaign.id,
+      title: campaign.title,
+      vehicleModel: campaign.vehicleModel,
+      vehicleYear: campaign.vehicleYear,
+      imageUrl: campaign.imageUrl,
+      drawDate: campaign.drawDate,
+      status: campaign.status,
+    },
+  }));
+});
+
+// POST /admin/winners
+router.post("/admin/winners", requireAdmin, async (req, res): Promise<void> => {
+  const body = AdminCreateWinnerBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const [winner] = await db
+    .insert(winnersTable)
+    .values({
+      ticketId: body.data.ticketId,
+      campaignId: body.data.campaignId,
+      prize: body.data.prize,
+      position: body.data.position ?? 1,
+    })
+    .returning();
+
+  res.status(201).json(AdminCreateWinnerResponse.parse(winner));
+});
+
+// GET /admin/winners?campaignId=xxx
+router.get("/admin/winners", requireAdmin, async (req, res): Promise<void> => {
+  const parsed = AdminListWinnersQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  let query = db
+    .select()
+    .from(winnersTable);
+
+  if (parsed.data.campaignId) {
+    query = query.where(eq(winnersTable.campaignId, parsed.data.campaignId)) as typeof query;
+  }
+
+  const winners = await query;
+
+  // Attach ticket info
+  const enriched = await Promise.all(winners.map(async (w) => {
+    const [ticket] = await db
+      .select({ id: ticketsTable.id, ticketNumber: ticketsTable.ticketNumber, buyerName: ticketsTable.buyerName, buyerPhone: ticketsTable.buyerPhone })
+      .from(ticketsTable)
+      .where(eq(ticketsTable.id, w.ticketId));
+
+    return {
+      ...w,
+      ticket: ticket ?? { id: w.ticketId, ticketNumber: "N/A", buyerName: "Unknown", buyerPhone: "Unknown" },
+    };
+  }));
+
+  res.json(AdminListWinnersResponse.parse(enriched));
+});
+
+// DELETE /admin/winners/:id
+router.delete("/admin/winners/:id", requireAdmin, async (req, res): Promise<void> => {
+  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const parsed = AdminDeleteWinnerParams.safeParse({ id: raw });
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const [deleted] = await db
+    .delete(winnersTable)
+    .where(eq(winnersTable.id, parsed.data.id))
+    .returning();
+
+  if (!deleted) {
+    res.status(404).json({ error: "Winner not found" });
+    return;
+  }
+
+  res.json({ success: true });
 });
 
 export default router;

@@ -335,4 +335,66 @@ export const AdminListTicketsResponseItem = zod.object({
 })
 export const AdminListTicketsResponse = zod.array(AdminListTicketsResponseItem)
 
+export const GetTicketResultParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetTicketResultResponse = zod.object({
+  "won": zod.boolean(),
+  "prize": zod.string().nullish(),
+  "position": zod.number().nullish(),
+  "ticket": zod.object({
+    "id": zod.number(),
+    "ticketNumber": zod.string(),
+    "luckyNumbers": zod.array(zod.number())
+  }),
+  "campaign": zod.object({
+    "id": zod.number(),
+    "title": zod.string(),
+    "vehicleModel": zod.string(),
+    "vehicleYear": zod.number(),
+    "imageUrl": zod.string().nullish(),
+    "drawDate": zod.coerce.date(),
+    "status": zod.enum(['active', 'completed', 'cancelled'])
+  })
+})
+
+export const AdminCreateWinnerBody = zod.object({
+  "ticketId": zod.number(),
+  "campaignId": zod.number(),
+  "prize": zod.string(),
+  "position": zod.number().optional().default(1)
+})
+
+export const AdminCreateWinnerResponse = zod.object({
+  "id": zod.number(),
+  "ticketId": zod.number(),
+  "campaignId": zod.number(),
+  "prize": zod.string(),
+  "position": zod.number()
+})
+
+export const AdminListWinnersQueryParams = zod.object({
+  "campaignId": zod.coerce.number().optional()
+})
+
+export const AdminListWinnersResponse = zod.array(zod.object({
+  "id": zod.number(),
+  "ticketId": zod.number(),
+  "campaignId": zod.number(),
+  "position": zod.number(),
+  "prize": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "ticket": zod.object({
+    "id": zod.number(),
+    "ticketNumber": zod.string(),
+    "buyerName": zod.string(),
+    "buyerPhone": zod.string()
+  })
+}))
+
+export const AdminDeleteWinnerParams = zod.object({
+  "id": zod.coerce.number()
+})
+
 

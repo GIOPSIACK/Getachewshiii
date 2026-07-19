@@ -49,7 +49,19 @@ create table if not exists registrations (
   updated_at   timestamp not null default now()
 );
 
+-- Winners table (tickets that won in a draw)
+create table if not exists winners (
+  id           serial primary key,
+  ticket_id    integer not null references tickets(id) unique,
+  campaign_id  integer not null references campaigns(id),
+  position     integer not null default 1,
+  prize        text not null,
+  created_at   timestamp not null default now()
+);
+
 -- Indexes for common lookups
 create index if not exists idx_tickets_phone   on tickets (buyer_phone);
 create index if not exists idx_tickets_camp   on tickets (campaign_id);
 create index if not exists idx_campaigns_stat on campaigns (status);
+create index if not exists idx_winners_ticket  on winners (ticket_id);
+create index if not exists idx_winners_camp    on winners (campaign_id);

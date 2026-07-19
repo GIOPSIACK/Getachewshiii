@@ -7,6 +7,7 @@ import { BuyTicket } from './pages/BuyTicket';
 import { Checkout } from './pages/Checkout';
 import { Success } from './pages/Success';
 import { MyTickets } from './pages/MyTickets';
+import { Result } from './pages/Result';
 import { Profile } from './pages/Profile';
 import { Chat } from './pages/Chat';
 import { Leaderboard } from './pages/Leaderboard';
@@ -27,6 +28,7 @@ function Router() {
         <Route path="/checkout/:campaignId" component={Checkout} />
         <Route path="/success" component={Success} />
         <Route path="/tickets" component={MyTickets} />
+        <Route path="/result/:ticketId" component={Result} />
         <Route path="/profile" component={Profile} />
         <Route path="/chat" component={Chat} />
         <Route path="/leaderboard" component={Leaderboard} />

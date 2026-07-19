@@ -443,3 +443,141 @@ components:
           type: string
       required:
         - url
+
+    TicketResult:
+      type: object
+      properties:
+        won:
+          type: boolean
+        prize:
+          type: string
+          nullable: true
+        position:
+          type: integer
+          nullable: true
+        ticket:
+          type: object
+          properties:
+            id:
+              type: integer
+            ticketNumber:
+              type: string
+            luckyNumbers:
+              type: array
+              items:
+                type: integer
+          required:
+            - id
+            - ticketNumber
+            - luckyNumbers
+        campaign:
+          type: object
+          properties:
+            id:
+              type: integer
+            title:
+              type: string
+            vehicleModel:
+              type: string
+            vehicleYear:
+              type: integer
+            imageUrl:
+              type: string
+              nullable: true
+            drawDate:
+              type: string
+              format: date-time
+            status:
+              type: string
+              enum: [active, completed, cancelled]
+          required:
+            - id
+            - title
+            - vehicleModel
+            - vehicleYear
+            - drawDate
+            - status
+      required:
+        - won
+        - ticket
+        - campaign
+
+    WinnerCreate:
+      type: object
+      properties:
+        ticketId:
+          type: integer
+        campaignId:
+          type: integer
+        prize:
+          type: string
+        position:
+          type: integer
+          default: 1
+      required:
+        - ticketId
+        - campaignId
+        - prize
+
+    WinnerResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        ticketId:
+          type: integer
+        campaignId:
+          type: integer
+        prize:
+          type: string
+        position:
+          type: integer
+      required:
+        - id
+        - ticketId
+        - campaignId
+        - prize
+        - position
+
+    WinnerListResponse:
+      type: array
+      items:
+        type: object
+        properties:
+          id:
+            type: integer
+          ticketId:
+            type: integer
+          campaignId:
+            type: integer
+          position:
+            type: integer
+          prize:
+            type: string
+          createdAt:
+            type: string
+            format: date-time
+          ticket:
+            type: object
+            properties:
+              id:
+                type: integer
+              ticketNumber:
+                type: string
+              buyerName:
+                type: string
+              buyerPhone:
+                type: string
+            required:
+              - id
+              - ticketNumber
+              - buyerName
+              - buyerPhone
+        required:
+          - id
+          - ticketId
+          - campaignId
+          - position
+          - prize
+          - createdAt
+          - ticket
