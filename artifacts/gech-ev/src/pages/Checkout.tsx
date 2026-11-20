@@ -239,7 +239,9 @@ export function Checkout() {
                   </p>
                 </div>
                 <div className="bg-secondary text-foreground text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0 ml-3">
-                  {state.luckyNumbers.length > 0
+                  {state.quantity > 1
+                    ? `${state.quantity} Tickets (${state.luckyNumbers.length} Numbers)`
+                    : state.luckyNumbers.length > 0
                     ? state.luckyNumbers.slice(0, 3).join(", ") + (state.luckyNumbers.length > 3 ? "…" : "")
                     : "Numbers"}
                 </div>
@@ -415,15 +417,38 @@ export function Checkout() {
               <div className="divide-y divide-border">
                 <SummaryRow label="Lottery" value={campaign.title} />
                 <SummaryRow label="Tickets" value={`${state.quantity} × ${price.toLocaleString()} Birr`} />
-                <div className="px-5 py-3.5 flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground font-medium">Your Numbers</span>
-                  <div className="flex flex-wrap gap-1 justify-end max-w-[55%]">
-                    {state.luckyNumbers.map((n) => (
-                      <span key={n} className="bg-secondary text-foreground text-[10px] font-bold px-2 py-0.5 rounded-full">
-                        #{n}
-                      </span>
-                    ))}
+                <div className="px-5 py-3.5 flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground font-medium">Your Lucky Numbers</span>
+                    <span className="text-xs font-bold text-primary">{state.quantity} Ticket{state.quantity > 1 ? "s" : ""}</span>
                   </div>
+                  {state.quantity > 1 ? (
+                    <div className="flex flex-col gap-2 pt-1">
+                      {Array.from({ length: state.quantity }).map((_, tIdx) => {
+                        const ticketNums = state.luckyNumbers.slice(tIdx * 6, (tIdx + 1) * 6);
+                        return (
+                          <div key={tIdx} className="flex items-center justify-between bg-muted/40 rounded-xl px-3 py-1.5 border border-border/50">
+                            <span className="text-xs font-bold text-foreground">Ticket #{tIdx + 1}:</span>
+                            <div className="flex flex-wrap gap-1 justify-end">
+                              {ticketNums.map((n) => (
+                                <span key={n} className="bg-primary/10 text-primary font-black text-[11px] px-2 py-0.5 rounded-lg border border-primary/20">
+                                  #{n}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-1 justify-end">
+                      {state.luckyNumbers.map((n) => (
+                        <span key={n} className="bg-secondary text-foreground text-[11px] font-bold px-2 py-0.5 rounded-full">
+                          #{n}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <SummaryRow label="Name" value={state.buyerName} />
                 <SummaryRow label="Phone" value={authPhone || state.buyerPhone} />

@@ -185,22 +185,54 @@ export function MyTickets() {
                 <div className="p-4">
                   {/* Lucky numbers */}
                   {ticket.luckyNumbers && ticket.luckyNumbers.length > 0 && (
-                    <div className="flex gap-1.5 flex-wrap justify-center mb-3">
-                      {ticket.luckyNumbers.map((n) => (
-                        <div
-                          key={n}
-                          className={cn(
-                            "w-8 h-8 rounded-full flex items-center justify-center text-xs font-extrabold shadow-sm",
-                            isActive
-                              ? "bg-primary text-primary-foreground shadow-primary/25"
-                              : isPending
-                              ? "bg-secondary text-foreground"
-                              : "bg-muted text-muted-foreground"
-                          )}
-                        >
-                          {n}
+                    <div className="flex flex-col gap-2 mb-3">
+                      {ticket.luckyNumbers.length > 6 ? (
+                        Array.from({ length: Math.ceil(ticket.luckyNumbers.length / 6) }).map((_, idx) => {
+                          const chunk = ticket.luckyNumbers.slice(idx * 6, (idx + 1) * 6);
+                          return (
+                            <div key={idx} className="bg-muted/30 rounded-xl p-2 border border-border/40">
+                              <p className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider mb-1.5 text-center">
+                                Ticket #{idx + 1}
+                              </p>
+                              <div className="flex gap-1.5 flex-wrap justify-center">
+                                {chunk.map((n) => (
+                                  <div
+                                    key={n}
+                                    className={cn(
+                                      "w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black shadow-sm",
+                                      isActive
+                                        ? "bg-primary text-primary-foreground shadow-primary/25"
+                                        : isPending
+                                        ? "bg-secondary text-foreground"
+                                        : "bg-muted text-muted-foreground"
+                                    )}
+                                  >
+                                    {n}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div className="flex gap-1.5 flex-wrap justify-center">
+                          {ticket.luckyNumbers.map((n) => (
+                            <div
+                              key={n}
+                              className={cn(
+                                "w-8 h-8 rounded-full flex items-center justify-center text-xs font-extrabold shadow-sm",
+                                isActive
+                                  ? "bg-primary text-primary-foreground shadow-primary/25"
+                                  : isPending
+                                  ? "bg-secondary text-foreground"
+                                  : "bg-muted text-muted-foreground"
+                              )}
+                            >
+                              {n}
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      )}
                     </div>
                   )}
 

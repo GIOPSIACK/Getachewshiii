@@ -37,62 +37,124 @@ export function BuyTicket() {
   const { data: allCampaigns, isLoading: campaignsLoading } = useListCampaigns();
   const activeCampaigns = (allCampaigns ?? []).filter((c) => c.status === "active" || !c.status);
 
-  // Selected campaign state (pre-select from route param, context, or first active)
+  // Selected campaign state
   const [selectedId, setSelectedId] = useState<number | null>(() => {
     if (params?.campaignId) return Number(params.campaignId);
     if (state.campaignId) return Number(state.campaignId);
     return null;
   });
 
-  // Keep selectedId in sync with activeCampaigns once loaded
   useEffect(() => {
     if (selectedId == null && activeCampaigns.length > 0) {
       setSelectedId(activeCampaigns[0].id);
     }
   }, [activeCampaigns, selectedId]);
 
-  // Fallback single campaign query if list hasn't loaded
   const campaignId = selectedId || Number(params?.campaignId || state.campaignId || 1);
   const { data: singleCampaign } = useGetCampaign(campaignId, {
     query: { enabled: !!campaignId && activeCampaigns.length === 0 } as any,
   });
 
-  // The active chosen campaign
   const campaign = activeCampaigns.find((c) => c.id === campaignId) ?? singleCampaign ?? activeCampaigns[0];
 
   // 3 distinct sequential sub-steps:
   // "car" -> "quantity" -> "numbers"
   const [subStep, setSubStep] = useState<"car" | "quantity" | "numbers">("car");
   const [quantity, setQuantity] = useState(state.quantity || 1);
-  const [luckyNumbers, setLuckyNumbers] = useState<number[]>(state.luckyNumbers || []);
+
+  // Each ticket has its own array of 6 lucky numbers: ticketNumbers[ticketIndex] = [num1, num2, ...]
+  const [ticketNumbers, setTicketNumbers] = useState<number[][]>(() => {
+    const initQty = state.quantity || 1;
+    const existing = state.luckyNumbers || [];
+    const arr: number[][] = [];
+    for (let i = 0; i < initQty; i++) {
+      arr.push(existing.slice(i * 6, (i + 1) * 6));
+    }
+    return arr;
+  });
+
+  const [activeTicketIndex, setActiveTicketIndex] = useState(0);
+
+  // When quantity changes, resize ticketNumbers preserving existing picks
+  useEffect(() => {
+    setTicketNumbers((prev) => {
+      const next: number[][] = [];
+      for (let i = 0; i < quantity; i++) {
+        next.push(prev[i] || []);
+      }
+      return next;
+    });
+    if (activeTicketIndex >= quantity) {
+      setActiveTicketIndex(0);
+    }
+  }, [quantity]);
 
   // Scroll to top whenever subStep changes
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   }, [subStep]);
 
-  // Sync state to CheckoutContext
+  // Sync state to CheckoutContext (flattened array of all tickets' lucky numbers)
   useEffect(() => {
     if (campaign?.id) {
-      updateState({ campaignId: campaign.id, quantity, luckyNumbers });
+      const flattened = ticketNumbers.flat();
+      updateState({ campaignId: campaign.id, quantity, luckyNumbers: flattened });
     }
-  }, [quantity, luckyNumbers, campaign?.id]);
+  }, [quantity, ticketNumbers, campaign?.id]);
+
+  const currentTicketNumbers = ticketNumbers[activeTicketIndex] || [];
 
   const toggleNumber = (num: number) => {
-    if (luckyNumbers.includes(num)) {
-      setLuckyNumbers(luckyNumbers.filter((n) => n !== num));
-    } else if (luckyNumbers.length < 6) {
-      setLuckyNumbers([...luckyNumbers, num].sort((a, b) => a - b));
-    }
+    setTicketNumbers((prev) => {
+      return prev.map((arr, idx) => {
+        if (idx !== activeTicketIndex) return arr;
+        if (arr.includes(num)) {
+          return arr.filter((n) => n !== num);
+        }
+        if (arr.length < 6) {
+          return [...arr, num].sort((a, b) => a - b);
+        }
+        return arr;
+      });
+    });
   };
 
-  const quickPick = () => {
+  const quickPickActive = () => {
     const numbers = new Set<number>();
     while (numbers.size < 6) {
       numbers.add(Math.floor(Math.random() * TOTAL_LUCKY_NUMBERS) + 1);
     }
-    setLuckyNumbers(Array.from(numbers).sort((a, b) => a - b));
+    const picked = Array.from(numbers).sort((a, b) => a - b);
+    setTicketNumbers((prev) => {
+      const copy = [...prev];
+      copy[activeTicketIndex] = picked;
+      return copy;
+    });
   };
+
+  const resetActive = () => {
+    setTicketNumbers((prev) => {
+      const copy = [...prev];
+      copy[activeTicketIndex] = [];
+      return copy;
+    });
+  };
+
+  // Quick Pick for ALL tickets at once
+  const quickPickAll = () => {
+    const allPicked: number[][] = [];
+    for (let t = 0; t < quantity; t++) {
+      const numbers = new Set<number>();
+      while (numbers.size < 6) {
+        numbers.add(Math.floor(Math.random() * TOTAL_LUCKY_NUMBERS) + 1);
+      }
+      allPicked.push(Array.from(numbers).sort((a, b) => a - b));
+    }
+    setTicketNumbers(allPicked);
+  };
+
+  const isAllComplete = ticketNumbers.length === quantity && ticketNumbers.every((t) => t && t.length === 6);
+  const firstIncompleteIndex = ticketNumbers.findIndex((t) => !t || t.length < 6);
 
   if (campaignsLoading && !campaign) {
     return (
@@ -104,7 +166,6 @@ export function BuyTicket() {
 
   const price = campaign ? (MODEL_PRICES[campaign.vehicleModel] ?? campaign.ticketPrice) : 3000;
   const totalPrice = quantity * price;
-  const isComplete = luckyNumbers.length === 6;
 
   return (
     <div className="flex flex-col flex-1 pb-safe animate-in fade-in duration-200">
@@ -137,12 +198,12 @@ export function BuyTicket() {
               <h1 className="text-xl font-bold" style={{ fontFamily: "'Highstories', sans-serif", letterSpacing: "0.05em" }}>
                 {subStep === "car" && "Step 1: Choose Vehicle"}
                 {subStep === "quantity" && "Step 2: Choose Quantity"}
-                {subStep === "numbers" && "Step 3: Pick Lucky Numbers"}
+                {subStep === "numbers" && (quantity > 1 ? `Step 3: Lucky Numbers (${quantity} Tickets)` : "Step 3: Pick Lucky Numbers")}
               </h1>
               <p className="text-xs text-muted-foreground">
                 {subStep === "car" && "Select which active lottery car you want"}
                 {subStep === "quantity" && "Select how many entries you want"}
-                {subStep === "numbers" && "Select 6 unique lucky numbers"}
+                {subStep === "numbers" && (quantity > 1 ? "Each ticket gets its own 6 lucky numbers" : "Select 6 unique lucky numbers")}
               </p>
             </div>
           </div>
@@ -319,7 +380,7 @@ export function BuyTicket() {
               How Many Tickets?
             </h2>
             <p className="text-xs text-muted-foreground text-center mb-6">
-              Increase your entries to boost your winning chances!
+              Each ticket gets its own separate 6 lucky numbers!
             </p>
 
             {/* Stepper display */}
@@ -338,7 +399,7 @@ export function BuyTicket() {
                   {quantity}
                 </span>
                 <span className="text-xs font-semibold text-muted-foreground mt-1">
-                  ticket{quantity > 1 ? "s" : ""}
+                  ticket{quantity > 1 ? "s" : ""} ({quantity * 6} lucky numbers)
                 </span>
               </div>
 
@@ -384,7 +445,7 @@ export function BuyTicket() {
                   Winning Odds
                 </p>
                 <p className="text-base font-extrabold text-primary">
-                  1 in {Math.max(1, Math.round(campaign.totalSlots / quantity)).toLocaleString()}
+                  {quantity} in {campaign.totalSlots.toLocaleString()}
                 </p>
               </div>
             </div>
@@ -418,9 +479,9 @@ export function BuyTicket() {
 
       {/* ================= STEP 3: LUCKY NUMBERS SELECTION (APPEARS SOLELY) ================= */}
       {subStep === "numbers" && campaign && (
-        <div className="px-4 flex-1 flex flex-col gap-5 animate-in fade-in duration-200">
+        <div className="px-4 flex-1 flex flex-col gap-4 animate-in fade-in duration-200">
           <div
-            className="relative overflow-hidden bg-card rounded-[1.75rem] p-5 shadow-sm border border-border flex-1"
+            className="relative overflow-hidden bg-card rounded-[1.75rem] p-4 shadow-sm border border-border flex-1"
             style={{
               backgroundImage: `url(${numbersPatternBg})`,
               backgroundRepeat: "no-repeat",
@@ -428,20 +489,75 @@ export function BuyTicket() {
               backgroundPosition: "center",
             }}
           >
+            {/* Multi-Ticket Navigation Tabs & Quick Pick All (when quantity > 1) */}
+            {quantity > 1 && (
+              <div className="mb-4">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className="text-xs font-extrabold text-foreground uppercase tracking-wider">
+                    Select Numbers for {quantity} Tickets
+                  </span>
+                  <button
+                    onClick={quickPickAll}
+                    type="button"
+                    className="flex items-center gap-1.5 bg-[#7BC143] text-black text-xs font-black px-3 py-1.5 rounded-full shadow-sm hover:brightness-105 active:scale-95 transition-all"
+                    style={{ boxShadow: "inset 0 0 0 2px #000000" }}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Quick Pick All Tickets
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+                  {ticketNumbers.map((nums, idx) => {
+                    const isCurrent = idx === activeTicketIndex;
+                    const isDone = nums.length === 6;
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setActiveTicketIndex(idx)}
+                        className={cn(
+                          "px-3.5 py-1.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 whitespace-nowrap transition-all border",
+                          isCurrent
+                            ? "bg-[#7BC143] text-black border-black shadow-sm"
+                            : isDone
+                            ? "bg-primary/15 border-primary/40 text-primary font-bold"
+                            : "bg-white/80 border-border text-foreground hover:bg-white"
+                        )}
+                      >
+                        <span>Ticket #{idx + 1}</span>
+                        {isDone ? (
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        ) : (
+                          <span className="text-[10px] font-bold opacity-75">({nums.length}/6)</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Lucky Numbers Header & Action Buttons */}
-            <div className="flex justify-between items-center mb-5 gap-3">
+            <div className="flex justify-between items-center mb-4 gap-2">
               <div className="rounded-2xl px-3 py-2" style={{ backgroundColor: "#E6EBB2" }}>
                 <h2
                   className="font-bold text-foreground"
-                  style={{ fontFamily: "'Highstories', sans-serif", letterSpacing: "0.05em", fontSize: "1.8rem" }}
+                  style={{ fontFamily: "'Highstories', sans-serif", letterSpacing: "0.05em", fontSize: "1.6rem" }}
                 >
-                  Pick 6 Lucky Numbers
+                  {quantity > 1 ? `Ticket #${activeTicketIndex + 1} Numbers` : "Pick 6 Lucky Numbers"}
                 </h2>
-                <p className="text-[11px] text-muted-foreground">Tap numbers below or Quick Pick</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {quantity > 1
+                    ? `Pick 6 numbers for ticket ${activeTicketIndex + 1} of ${quantity}`
+                    : "Tap 6 numbers below or Quick Pick"}
+                </p>
               </div>
+
               <div className="flex flex-col gap-1.5 shrink-0">
                 <button
-                  onClick={quickPick}
+                  onClick={quickPickActive}
+                  type="button"
                   className="flex items-center justify-center gap-1 text-black rounded-full hover:brightness-110 active:scale-[0.97] transition-all px-3 py-1.5 shadow-sm"
                   style={{
                     backgroundColor: "#7BC143",
@@ -455,7 +571,8 @@ export function BuyTicket() {
                   Quick Pick
                 </button>
                 <button
-                  onClick={() => setLuckyNumbers([])}
+                  onClick={resetActive}
+                  type="button"
                   className="flex items-center justify-center gap-1 text-black rounded-full hover:brightness-110 active:scale-[0.97] transition-all px-3 py-1.5 shadow-sm"
                   style={{
                     backgroundColor: "#FFFFFF",
@@ -471,24 +588,34 @@ export function BuyTicket() {
               </div>
             </div>
 
-            {/* Selected 6 Number Slots */}
-            <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-3 mb-5 shadow-sm border border-black/10">
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 text-center">
-                Selected Numbers ({luckyNumbers.length}/6)
-              </p>
+            {/* Selected 6 Number Slots for the Active Ticket */}
+            <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-3 mb-4 shadow-sm border border-black/10">
+              <div className="flex justify-between items-center mb-2 px-1">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                  Ticket #{activeTicketIndex + 1} Numbers ({currentTicketNumbers.length}/6)
+                </p>
+                {currentTicketNumbers.length === 6 && activeTicketIndex < quantity - 1 && (
+                  <button
+                    onClick={() => setActiveTicketIndex(activeTicketIndex + 1)}
+                    className="text-[11px] font-extrabold text-primary flex items-center gap-0.5 hover:underline"
+                  >
+                    Next Ticket →
+                  </button>
+                )}
+              </div>
               <div className="flex justify-center gap-2">
                 {[0, 1, 2, 3, 4, 5].map((i) => (
                   <div
                     key={i}
                     className={cn(
                       "rounded-full flex items-center justify-center text-xs font-black border-2 transition-all px-1",
-                      luckyNumbers[i]
+                      currentTicketNumbers[i]
                         ? "bg-[#7BC143] border-black text-black shadow-sm scale-105"
                         : "bg-muted/60 border-dashed border-border text-muted-foreground"
                     )}
                     style={{ minWidth: "36px", height: "36px" }}
                   >
-                    {luckyNumbers[i] ?? "?"}
+                    {currentTicketNumbers[i] ?? "?"}
                   </div>
                 ))}
               </div>
@@ -496,13 +623,13 @@ export function BuyTicket() {
 
             {/* Numbers Selection Grid (1 - 5000) */}
             <div
-              className="max-h-72 overflow-y-auto rounded-2xl p-3 shadow-inner"
+              className="max-h-64 overflow-y-auto rounded-2xl p-3 shadow-inner"
               style={{ backgroundColor: "#E6EBB2" }}
             >
               <div className="grid grid-cols-7 gap-2">
                 {Array.from({ length: TOTAL_LUCKY_NUMBERS }, (_, i) => i + 1).map((num) => {
-                  const isSelected = luckyNumbers.includes(num);
-                  const isDisabled = !isSelected && luckyNumbers.length >= 6;
+                  const isSelected = currentTicketNumbers.includes(num);
+                  const isDisabled = !isSelected && currentTicketNumbers.length >= 6;
                   return (
                     <button
                       key={num}
@@ -537,41 +664,42 @@ export function BuyTicket() {
             </div>
             <button
               onClick={() => {
-                if (isComplete) {
+                if (isAllComplete) {
                   window.scrollTo({ top: 0, left: 0, behavior: "instant" });
                   setLocation(`/checkout/${campaign.id}`);
+                } else if (firstIncompleteIndex !== -1) {
+                  setActiveTicketIndex(firstIncompleteIndex);
                 }
               }}
-              disabled={!isComplete}
               className={cn(
-                "w-full py-4 rounded-2xl font-bold hover:brightness-105 active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2",
-                isComplete ? "text-black" : "text-white text-base"
+                "w-full py-4 rounded-2xl font-bold hover:brightness-105 active:scale-[0.98] transition-all flex items-center justify-center gap-2",
+                isAllComplete ? "text-black" : "text-white text-base"
               )}
               style={
-                isComplete
+                isAllComplete
                   ? {
                       backgroundColor: "#7BC143",
                       boxShadow: "inset 0 0 0 3px #000000",
                       fontFamily: "'Highstories', sans-serif",
-                      fontSize: "28px",
+                      fontSize: "26px",
                       letterSpacing: "0.05em",
                     }
                   : {
                       backgroundColor: "#0A2218",
                       boxShadow: "inset 0 0 0 3px #000000",
                       fontFamily: "'Highstories', sans-serif",
-                      fontSize: "22px",
+                      fontSize: "20px",
                       letterSpacing: "0.05em",
                     }
               }
             >
-              {isComplete ? (
+              {isAllComplete ? (
                 <>
-                  Continue to Checkout
+                  Continue to Checkout ({quantity} Ticket{quantity > 1 ? "s" : ""})
                   <ArrowRight className="w-5 h-5 text-black" />
                 </>
               ) : (
-                `Pick ${6 - luckyNumbers.length} More Number${6 - luckyNumbers.length === 1 ? "" : "s"}`
+                `Pick numbers for Ticket #${firstIncompleteIndex + 1} (${ticketNumbers[firstIncompleteIndex]?.length || 0}/6)`
               )}
             </button>
           </div>

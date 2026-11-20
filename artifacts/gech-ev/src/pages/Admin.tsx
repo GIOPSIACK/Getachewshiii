@@ -79,10 +79,7 @@ interface WinnerFormState {
 }
 
 interface CampaignFormState {
-  title: string;
-  description: string;
   vehicleModel: string;
-  vehicleYear: string;
   ticketPrice: string;
   totalSlots: string;
   drawDate: string;
@@ -104,10 +101,7 @@ export function AdminPanel() {
   const [showAddCampaign, setShowAddCampaign] = useState(false);
   const [campaignError, setCampaignError] = useState<string | null>(null);
   const [newCampaign, setNewCampaign] = useState<CampaignFormState>({
-    title: "",
-    description: "",
     vehicleModel: "BYD Yuan Plus",
-    vehicleYear: "2025",
     ticketPrice: "3000",
     totalSlots: "1000",
     drawDate: "",
@@ -186,10 +180,10 @@ export function AdminPanel() {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          title: newCampaign.title,
-          description: newCampaign.description,
+          title: newCampaign.vehicleModel,
+          description: `${newCampaign.vehicleModel} Ekub Lottery Draw`,
           vehicleModel: newCampaign.vehicleModel,
-          vehicleYear: parseInt(newCampaign.vehicleYear) || 2025,
+          vehicleYear: 2025,
           ticketPrice: parseFloat(newCampaign.ticketPrice) || 3000,
           totalSlots: parseInt(newCampaign.totalSlots) || 1000,
           drawDate: new Date(newCampaign.drawDate).toISOString(),
@@ -198,7 +192,7 @@ export function AdminPanel() {
           paymentDetails: {
             telebirrNumber: newCampaign.telebirrNumber.trim(),
             cbeAccount: newCampaign.cbeAccount.trim(),
-            accountName: newCampaign.accountName.trim(),
+            accountName: newCampaign.accountName.trim() || "Gech EV Ekub",
           },
         }),
       });
@@ -211,10 +205,7 @@ export function AdminPanel() {
 
       setShowAddCampaign(false);
       setNewCampaign({
-        title: "",
-        description: "",
         vehicleModel: "BYD Yuan Plus",
-        vehicleYear: "2025",
         ticketPrice: "3000",
         totalSlots: "1000",
         drawDate: "",
@@ -634,23 +625,8 @@ export function AdminPanel() {
               )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                {/* Title */}
-                <div>
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">
-                    Lottery Title *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newCampaign.title}
-                    onChange={e => setNewCampaign({ ...newCampaign, title: e.target.value })}
-                    placeholder="e.g. BYD Yuan Plus Launch Draw"
-                    className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  />
-                </div>
-
                 {/* Vehicle Model */}
-                <div>
+                <div className="md:col-span-2">
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">
                     Vehicle Model *
                   </label>
@@ -668,28 +644,12 @@ export function AdminPanel() {
                         key={model}
                         type="button"
                         onClick={() => setNewCampaign({ ...newCampaign, vehicleModel: model })}
-                        className="text-[10px] font-semibold bg-muted hover:bg-muted/80 px-2 py-0.5 rounded-md text-muted-foreground"
+                        className="text-[10px] font-semibold bg-muted hover:bg-muted/80 px-2.5 py-1 rounded-md text-foreground transition-colors"
                       >
                         {model}
                       </button>
                     ))}
                   </div>
-                </div>
-
-                {/* Vehicle Year */}
-                <div>
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">
-                    Vehicle Year *
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    min={2020}
-                    max={2030}
-                    value={newCampaign.vehicleYear}
-                    onChange={e => setNewCampaign({ ...newCampaign, vehicleYear: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  />
                 </div>
 
                 {/* Ticket Price in Birr */}
@@ -738,31 +698,16 @@ export function AdminPanel() {
                   />
                 </div>
 
-                {/* Description */}
-                <div className="md:col-span-2">
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">
-                    Campaign Description *
-                  </label>
-                  <textarea
-                    required
-                    rows={2}
-                    value={newCampaign.description}
-                    onChange={e => setNewCampaign({ ...newCampaign, description: e.target.value })}
-                    placeholder="Win a brand new electric vehicle in the official Gech Ekub draw!"
-                    className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  />
-                </div>
-
                 {/* Optional Image URL */}
-                <div className="md:col-span-2">
+                <div>
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">
-                    Image URL (Optional - leave empty to use default vehicle image)
+                    Image URL (Optional)
                   </label>
                   <input
                     type="url"
                     value={newCampaign.imageUrl}
                     onChange={e => setNewCampaign({ ...newCampaign, imageUrl: e.target.value })}
-                    placeholder="https://example.com/vehicle-image.jpg"
+                    placeholder="https://example.com/vehicle.jpg (leave empty for default)"
                     className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
                   />
                 </div>
@@ -794,6 +739,23 @@ export function AdminPanel() {
                     placeholder="100012345678"
                     className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
                   />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">
+                    Account Holder Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newCampaign.accountName}
+                    onChange={e => setNewCampaign({ ...newCampaign, accountName: e.target.value })}
+                    placeholder="e.g. Gech EV Ekub / Getachew Shiferaw"
+                    className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Shown to users before transfer to verify the account recipient.
+                  </p>
                 </div>
               </div>
 

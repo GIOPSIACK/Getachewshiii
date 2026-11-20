@@ -79,8 +79,8 @@ router.post("/admin/campaigns", requireAdmin, async (req, res): Promise<void> =>
     const [inserted] = await db
       .insert(campaignsTable)
       .values({
-        title: String(title).trim(),
-        description: String(description).trim(),
+        title: title ? String(title).trim() : String(vehicleModel).trim(),
+        description: description ? String(description).trim() : `${String(vehicleModel).trim()} Ekub Lottery Draw`,
         imageUrl: imageUrl ? String(imageUrl).trim() : null,
         vehicleModel: String(vehicleModel).trim(),
         vehicleYear: numYear || 2025,
