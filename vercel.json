@@ -1,0 +1,15 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "buildCommand": "pnpm run build && pnpm run copy-api",
+  "outputDirectory": "artifacts/gech-ev/dist",
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api" },
+    { "source": "/telegram", "destination": "/api" },
+    { "source": "/telegram/(.*)", "destination": "/api" },
+    { "source": "/((?!api/|telegram).*)", "destination": "/index.html" }
+  ],
+  "functions": {
+    "api/index.mjs": { "maxDuration": 30 }
+  }
+}

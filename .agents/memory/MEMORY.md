@@ -1,0 +1,1 @@
+- [pnpm-workspace import startup failures](pnpm-workspace-import-startup.md) — after importing a zip of an existing pnpm-workspace Replit project, workflows fail with "vite: command not found" / "Cannot find package 'esbuild'" and API 500s until deps are installed and the DB schema is pushed.
