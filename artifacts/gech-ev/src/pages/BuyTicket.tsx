@@ -140,19 +140,6 @@ export function BuyTicket() {
     });
   };
 
-  // Quick Pick for ALL tickets at once
-  const quickPickAll = () => {
-    const allPicked: number[][] = [];
-    for (let t = 0; t < quantity; t++) {
-      const numbers = new Set<number>();
-      while (numbers.size < 6) {
-        numbers.add(Math.floor(Math.random() * TOTAL_LUCKY_NUMBERS) + 1);
-      }
-      allPicked.push(Array.from(numbers).sort((a, b) => a - b));
-    }
-    setTicketNumbers(allPicked);
-  };
-
   const isAllComplete = ticketNumbers.length === quantity && ticketNumbers.every((t) => t && t.length === 6);
   const firstIncompleteIndex = ticketNumbers.findIndex((t) => !t || t.length < 6);
 
@@ -489,25 +476,19 @@ export function BuyTicket() {
               backgroundPosition: "center",
             }}
           >
-            {/* Multi-Ticket Navigation Tabs & Quick Pick All (when quantity > 1) */}
+            {/* Multi-Ticket Navigation Tabs inside a rectangular card (when quantity > 1) */}
             {quantity > 1 && (
-              <div className="mb-4">
-                <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-3 mb-4 shadow-sm border border-black/10">
+                <div className="flex items-center justify-between mb-2 px-0.5">
                   <span className="text-xs font-extrabold text-foreground uppercase tracking-wider">
                     Select Numbers for {quantity} Tickets
                   </span>
-                  <button
-                    onClick={quickPickAll}
-                    type="button"
-                    className="flex items-center gap-1.5 bg-[#7BC143] text-black text-xs font-black px-3 py-1.5 rounded-full shadow-sm hover:brightness-105 active:scale-95 transition-all"
-                    style={{ boxShadow: "inset 0 0 0 2px #000000" }}
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    Quick Pick All Tickets
-                  </button>
+                  <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                    {ticketNumbers.filter((t) => t.length === 6).length}/{quantity} Ready
+                  </span>
                 </div>
 
-                <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+                <div className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-none">
                   {ticketNumbers.map((nums, idx) => {
                     const isCurrent = idx === activeTicketIndex;
                     const isDone = nums.length === 6;
@@ -522,7 +503,7 @@ export function BuyTicket() {
                             ? "bg-[#7BC143] text-black border-black shadow-sm"
                             : isDone
                             ? "bg-primary/15 border-primary/40 text-primary font-bold"
-                            : "bg-white/80 border-border text-foreground hover:bg-white"
+                            : "bg-muted/50 border-border text-foreground hover:bg-muted"
                         )}
                       >
                         <span>Ticket #{idx + 1}</span>
@@ -695,11 +676,11 @@ export function BuyTicket() {
             >
               {isAllComplete ? (
                 <>
-                  Continue to Checkout ({quantity} Ticket{quantity > 1 ? "s" : ""})
+                  Checkout
                   <ArrowRight className="w-5 h-5 text-black" />
                 </>
               ) : (
-                `Pick numbers for Ticket #${firstIncompleteIndex + 1} (${ticketNumbers[firstIncompleteIndex]?.length || 0}/6)`
+                `Ticket #${firstIncompleteIndex + 1}: Pick 6 Numbers`
               )}
             </button>
           </div>
