@@ -157,33 +157,43 @@ router.patch("/admin/campaigns/:id/status", requireAdmin, async (req, res): Prom
 
 router.get("/campaigns/:id", async (req, res): Promise<void> => {
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-  const parsed = GetCampaignParams.safeParse({ id: raw });
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+  const id = Number(raw);
+  if (!id || Number.isNaN(id)) {
+    res.status(400).json({ error: "Invalid campaign id" });
     return;
   }
 
-  const [campaign] = await db
-    .select()
-    .from(campaignsTable)
-    .where(eq(campaignsTable.id, parsed.data.id));
+  try {
+    const [campaign] = await db
+      .select()
+      .from(campaignsTable)
+      .where(eq(campaignsTable.id, id));
 
-  if (!campaign) {
-    res.status(404).json({ error: "Campaign not found" });
-    return;
+    if (!campaign) {
+      res.status(404).json({ error: "Campaign not found" });
+      return;
+    }
+
+    const pDetails = typeof campaign.paymentDetails === "string"
+      ? JSON.parse(campaign.paymentDetails || "{}")
+      : (campaign.paymentDetails || {});
+
+    const shaped = {
+      ...campaign,
+      title: campaign.title || campaign.vehicleModel,
+      description: campaign.description || `${campaign.vehicleModel} Ekub Lottery Draw`,
+      ticketPrice: Number(campaign.ticketPrice),
+      paymentDetails: {
+        telebirrNumber: String(pDetails?.telebirrNumber || pDetails?.telebirr || "0911223344"),
+        cbeAccount: String(pDetails?.cbeAccount || pDetails?.cbeAccountNumber || "100012345678"),
+        accountName: String(pDetails?.accountName || "Gech EV Ekub"),
+      },
+    };
+
+    res.json(shaped);
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || "Failed to fetch campaign" });
   }
-
-  const shaped = {
-    ...campaign,
-    ticketPrice: Number(campaign.ticketPrice),
-    paymentDetails: campaign.paymentDetails as {
-      telebirrNumber: string;
-      cbeAccount: string;
-      accountName: string;
-    },
-  };
-
-  res.json(GetCampaignResponse.parse(shaped));
 });
 
 export default router;

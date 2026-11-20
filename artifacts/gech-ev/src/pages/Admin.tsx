@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAdminListTickets, useUpdateTicketStatus, setAuthTokenGetter, Ticket, AdminListTicketsStatus } from "@workspace/api-client-react";
-import { Check, X, Search, Image as ImageIcon, CheckCircle2, Clock, LogOut, Lock, Trophy, Trash2, Plus, Sparkles, Calendar, Car, AlertCircle } from "lucide-react";
+import { Check, X, Search, Image as ImageIcon, CheckCircle2, Clock, LogOut, Lock, Trophy, Trash2, Plus, Sparkles, Calendar, Car, AlertCircle, Upload } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -71,6 +71,37 @@ function LoginGate({ onAuthed }: { onAuthed: (password: string) => void }) {
   );
 }
 
+function compressImage(file: File, maxWidth = 1200, quality = 0.85): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(e.target?.result as string);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = reject;
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 interface WinnerFormState {
   ticketId: string;
   campaignId: string;
@@ -110,6 +141,23 @@ export function AdminPanel() {
     cbeAccount: "100012345678",
     accountName: "Gech EV Ekub",
   });
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const [imageUploading, setImageUploading] = useState(false);
+
+  const handleVehicleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageUploading(true);
+    setCampaignError(null);
+    try {
+      const compressedDataUrl = await compressImage(file, 1200, 0.85);
+      setNewCampaign((prev) => ({ ...prev, imageUrl: compressedDataUrl }));
+    } catch {
+      setCampaignError("Failed to process image. Please try another image file.");
+    } finally {
+      setImageUploading(false);
+    }
+  };
 
   // Winners state
   const [winners, setWinners] = useState<any[]>([]);
@@ -174,6 +222,12 @@ export function AdminPanel() {
   const submitCampaign = async (e: React.FormEvent) => {
     e.preventDefault();
     setCampaignError(null);
+
+    if (!newCampaign.imageUrl || !newCampaign.imageUrl.trim()) {
+      setCampaignError("Vehicle photo is required! Please upload a photo from your device.");
+      return;
+    }
+
     try {
       const token = sessionStorage.getItem(STORAGE_KEY);
       const res = await fetch("/api/admin/campaigns", {
@@ -698,18 +752,76 @@ export function AdminPanel() {
                   />
                 </div>
 
-                {/* Optional Image URL */}
-                <div>
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">
-                    Image URL (Optional)
+                {/* Vehicle Photo Upload (Required from device) */}
+                <div className="md:col-span-2">
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                    <span>Vehicle Photo * (Upload from Device)</span>
+                    <span className="text-[11px] text-primary font-bold">Required &bull; Displayed on Home</span>
                   </label>
                   <input
-                    type="url"
-                    value={newCampaign.imageUrl}
-                    onChange={e => setNewCampaign({ ...newCampaign, imageUrl: e.target.value })}
-                    placeholder="https://example.com/vehicle.jpg (leave empty for default)"
-                    className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    ref={imageInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleVehicleImageChange}
+                    className="hidden"
                   />
+
+                  {newCampaign.imageUrl ? (
+                    <div className="relative w-full aspect-[16/9] max-h-72 rounded-2xl overflow-hidden border-2 border-primary shadow-md bg-muted group">
+                      <img
+                        src={newCampaign.imageUrl}
+                        alt="Vehicle Preview"
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => imageInputRef.current?.click()}
+                          className="px-4 py-2 bg-primary text-black font-extrabold rounded-xl text-xs flex items-center gap-1.5 shadow-sm hover:brightness-105 active:scale-95 transition-all"
+                        >
+                          <Upload className="w-3.5 h-3.5" /> Change Photo
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNewCampaign((prev) => ({ ...prev, imageUrl: "" }));
+                            if (imageInputRef.current) imageInputRef.current.value = "";
+                          }}
+                          className="px-4 py-2 bg-destructive text-white font-extrabold rounded-xl text-xs flex items-center gap-1.5 shadow-sm hover:brightness-105 active:scale-95 transition-all"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Remove
+                        </button>
+                      </div>
+                      <div className="absolute bottom-2 left-2 bg-black/75 backdrop-blur-sm text-white px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-primary" /> Vehicle Photo Uploaded
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => imageInputRef.current?.click()}
+                      className={cn(
+                        "w-full aspect-[16/9] max-h-52 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-2 p-6 transition-all",
+                        campaignError && !newCampaign.imageUrl
+                          ? "border-destructive/80 bg-destructive/5"
+                          : "border-primary/50 bg-primary/5 hover:bg-primary/10 active:scale-[0.99]"
+                      )}
+                    >
+                      <div className="w-14 h-14 rounded-2xl bg-primary/20 flex items-center justify-center text-primary mb-1 shadow-sm">
+                        {imageUploading ? (
+                          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Upload className="w-7 h-7" />
+                        )}
+                      </div>
+                      <p className="font-extrabold text-sm text-foreground">
+                        {imageUploading ? "Processing photo..." : "Upload Vehicle Photo from Device *"}
+                      </p>
+                      <p className="text-xs text-muted-foreground text-center">
+                        Tap here to select PNG, JPG, or WEBP from your phone/computer
+                      </p>
+                    </button>
+                  )}
                 </div>
 
                 {/* Payment details */}

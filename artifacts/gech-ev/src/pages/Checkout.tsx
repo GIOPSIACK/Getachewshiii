@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
-import { useGetCampaign, useUploadReceipt, useCreateTicket } from "@workspace/api-client-react";
+import { useGetCampaign, useListCampaigns, useUploadReceipt, useCreateTicket } from "@workspace/api-client-react";
 import { useCheckout } from "@/contexts/CheckoutContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { X, Upload, Trash2, AlertCircle, CreditCard, Smartphone, Check } from "lucide-react";
+import { X, Upload, Trash2, CreditCard, Smartphone, Check, ArrowLeft, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const MODEL_PRICES: Record<string, number> = {
@@ -17,10 +17,18 @@ export function Checkout() {
   const { state, updateState } = useCheckout();
   const { user, setUser } = useAuth();
 
-  const campaignId = Number(params?.campaignId || state.campaignId);
-  const { data: campaign, isLoading } = useGetCampaign(campaignId, {
+  // Parse campaign ID safely
+  const rawParamId = params?.campaignId;
+  const parsedId = rawParamId ? Number(rawParamId) : NaN;
+  const campaignId = !isNaN(parsedId) && parsedId > 0 ? parsedId : (state.campaignId || 1);
+
+  // Fetch campaign by ID, and also use cached campaigns list as immediate fallback
+  const { data: allCampaigns } = useListCampaigns();
+  const { data: singleCampaign, isLoading: isSingleLoading } = useGetCampaign(campaignId, {
     query: { enabled: !!campaignId } as any,
   });
+
+  const campaign = singleCampaign ?? allCampaigns?.find((c) => c.id === campaignId) ?? allCampaigns?.[0];
 
   const uploadReceipt = useUploadReceipt();
   const createTicket = useCreateTicket();
@@ -37,18 +45,66 @@ export function Checkout() {
   const [slideDir, setSlideDir] = useState<"left" | "right">("left");
   const [animKey, setAnimKey] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [submitError, setSubmitError] = useState("");
 
-  if (isLoading || !campaign) {
+  // Loading state (only if neither single campaign nor cached campaigns are available)
+  if (!campaign && isSingleLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center p-6">
-        <div className="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+      <div className="flex flex-col flex-1 min-h-[100dvh] bg-background">
+        <div className="px-4 pt-12 pb-4 flex items-center justify-between border-b border-border/40">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setLocation("/")}
+              className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-muted-foreground"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <h1 className="text-lg font-bold">Loading Checkout...</h1>
+          </div>
+        </div>
+        <div className="flex-1 flex flex-col items-center justify-center p-6 gap-3">
+          <div className="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+          <p className="text-xs text-muted-foreground font-medium">Preparing your Ekub ticket order</p>
+        </div>
       </div>
     );
   }
 
-  const price = MODEL_PRICES[campaign.vehicleModel] ?? campaign.ticketPrice;
-  const totalPrice = price * state.quantity;
+  // Fallback if campaign not found
+  if (!campaign) {
+    return (
+      <div className="flex flex-col flex-1 min-h-[100dvh] bg-background p-6 items-center justify-center text-center">
+        <div className="w-14 h-14 rounded-2xl bg-destructive/10 text-destructive flex items-center justify-center mb-3">
+          <AlertCircle className="w-7 h-7" />
+        </div>
+        <h2 className="text-lg font-bold mb-1">Lottery Not Found</h2>
+        <p className="text-xs text-muted-foreground mb-6 max-w-xs">
+          The selected lottery is not available or has ended.
+        </p>
+        <button
+          onClick={() => setLocation("/")}
+          className="px-6 py-3 bg-primary text-black font-extrabold rounded-xl text-sm"
+        >
+          Return to Home
+        </button>
+      </div>
+    );
+  }
+
+  // Safe variables
+  const price = MODEL_PRICES[campaign.vehicleModel] ?? campaign.ticketPrice ?? 3000;
+  const quantity = state.quantity > 0 ? state.quantity : 1;
+  const totalPrice = price * quantity;
   const authPhone = user?.phone || "";
+  const luckyNumbers = Array.isArray(state.luckyNumbers) ? state.luckyNumbers : [];
+
+  // Safe payment details
+  const rawPDetails = typeof campaign.paymentDetails === "string"
+    ? JSON.parse(campaign.paymentDetails || "{}")
+    : (campaign.paymentDetails || {});
+  const telebirrNumber = rawPDetails.telebirrNumber || rawPDetails.telebirr || "0911223344";
+  const cbeAccount = rawPDetails.cbeAccount || rawPDetails.cbeAccountNumber || "100012345678";
+  const accountName = rawPDetails.accountName || "Gech EV Ekub";
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -75,8 +131,6 @@ export function Checkout() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const [submitError, setSubmitError] = useState("");
-
   const handleSubmit = async () => {
     setIsSubmitting(true);
     setSubmitError("");
@@ -85,11 +139,11 @@ export function Checkout() {
       const result = await createTicket.mutateAsync({
         data: {
           campaignId: campaign.id,
-          buyerName: state.buyerName,
+          buyerName: state.buyerName || "Customer",
           buyerPhone: phoneUsed,
-          quantity: state.quantity,
-          luckyNumbers: state.luckyNumbers,
-          paymentMethod: state.paymentMethod,
+          quantity: quantity,
+          luckyNumbers: luckyNumbers,
+          paymentMethod: state.paymentMethod || "telebirr",
           senderAccount: state.senderAccount || "N/A (not provided)",
           receiptImageUrl: state.receiptImageUrl,
         },
@@ -139,8 +193,9 @@ export function Checkout() {
   };
 
   const goBack = () => {
-    if (step === 1) setLocation(`/buy/${campaign.id}`);
-    else {
+    if (step === 1) {
+      setLocation(`/buy/${campaign.id}`);
+    } else {
       setSlideDir("right");
       setAnimKey((k) => k + 1);
       setStep((s) => (s - 1) as 1 | 2 | 3);
@@ -208,7 +263,6 @@ export function Checkout() {
                 "text-[10px] font-semibold transition-colors",
                 i + 1 === step ? "text-primary" : i + 1 < step ? "text-foreground" : "text-muted-foreground"
               )}
-              style={{ width: i === 1 ? "auto" : "auto" }}
             >
               {label}
             </span>
@@ -233,16 +287,16 @@ export function Checkout() {
             <div className="bg-card border border-border rounded-[1.5rem] p-5 shadow-sm">
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <p className="font-extrabold text-base text-foreground">{campaign.title}</p>
+                  <p className="font-extrabold text-base text-foreground">{campaign.vehicleModel}</p>
                   <p className="text-sm text-muted-foreground mt-0.5">
-                    {state.quantity} Ticket{state.quantity > 1 ? "s" : ""} × {price.toLocaleString()} Birr
+                    {quantity} Ticket{quantity > 1 ? "s" : ""} × {price.toLocaleString()} Birr
                   </p>
                 </div>
                 <div className="bg-secondary text-foreground text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0 ml-3">
-                  {state.quantity > 1
-                    ? `${state.quantity} Tickets (${state.luckyNumbers.length} Numbers)`
-                    : state.luckyNumbers.length > 0
-                    ? state.luckyNumbers.slice(0, 3).join(", ") + (state.luckyNumbers.length > 3 ? "…" : "")
+                  {quantity > 1
+                    ? `${quantity} Tickets (${luckyNumbers.length} Numbers)`
+                    : luckyNumbers.length > 0
+                    ? luckyNumbers.slice(0, 3).join(", ") + (luckyNumbers.length > 3 ? "…" : "")
                     : "Numbers"}
                 </div>
               </div>
@@ -270,7 +324,7 @@ export function Checkout() {
                 type="tel"
                 value={authPhone || state.buyerPhone}
                 onChange={(e) => !authPhone && updateState({ buyerPhone: e.target.value.replace(/\D/g, "").slice(0, 12) })}
-                placeholder="251922990331"
+                placeholder="0911223344"
                 readOnly={!!authPhone}
                 className={`w-full bg-card border border-border rounded-2xl px-4 py-4 focus:outline-none focus:ring-2 focus:ring-primary/30 text-base font-medium shadow-sm tracking-wider ${authPhone ? "opacity-70 cursor-not-allowed" : ""}`}
               />
@@ -282,7 +336,7 @@ export function Checkout() {
         {step === 2 && (
           <div className="flex flex-col gap-5">
             <p className="text-sm font-semibold text-foreground">
-              Select a bank account to transfer payment
+              Select a payment method and transfer the exact total
             </p>
 
             {/* Telebirr */}
@@ -303,10 +357,10 @@ export function Checkout() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-sm">Telebirr</p>
-                <p className="text-xs text-muted-foreground truncate">{campaign.paymentDetails.accountName}</p>
+                <p className="text-xs text-muted-foreground truncate">{accountName}</p>
               </div>
               <div className="text-right shrink-0">
-                <p className="font-bold text-sm tabular-nums">{campaign.paymentDetails.telebirrNumber}</p>
+                <p className="font-bold text-sm tabular-nums">{telebirrNumber}</p>
                 {state.paymentMethod === "telebirr" && (
                   <div className="mt-1 w-4 h-4 rounded-full bg-primary flex items-center justify-center ml-auto">
                     <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
@@ -332,11 +386,11 @@ export function Checkout() {
                 <CreditCard className={cn("w-6 h-6", state.paymentMethod === "cbe" ? "text-primary" : "text-muted-foreground")} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-sm">Commercial Bank of Ethiopia</p>
-                <p className="text-xs text-muted-foreground truncate">{campaign.paymentDetails.accountName}</p>
+                <p className="font-bold text-sm">Commercial Bank of Ethiopia (CBE)</p>
+                <p className="text-xs text-muted-foreground truncate">{accountName}</p>
               </div>
               <div className="text-right shrink-0">
-                <p className="font-bold text-xs tabular-nums">{campaign.paymentDetails.cbeAccount}</p>
+                <p className="font-bold text-xs tabular-nums">{cbeAccount}</p>
                 {state.paymentMethod === "cbe" && (
                   <div className="mt-1 w-4 h-4 rounded-full bg-primary flex items-center justify-center ml-auto">
                     <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
@@ -351,7 +405,10 @@ export function Checkout() {
               <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
 
               {receiptPreview ? (
-                <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-muted cursor-pointer shadow-sm" onClick={() => fileInputRef.current?.click()}>
+                <div
+                  className="relative w-full aspect-video rounded-2xl overflow-hidden bg-muted cursor-pointer shadow-sm"
+                  onClick={() => fileInputRef.current?.click()}
+                >
                   <img src={receiptPreview} alt="Receipt" className="w-full h-full object-cover" />
                   <button
                     onClick={(e) => { e.stopPropagation(); removeReceipt(); }}
@@ -366,6 +423,7 @@ export function Checkout() {
                 </div>
               ) : (
                 <button
+                  type="button"
                   onClick={() => fileInputRef.current?.click()}
                   className="w-full aspect-[3/2] rounded-2xl border-2 border-dashed border-secondary bg-secondary/10 flex flex-col items-center justify-center gap-3 hover:bg-secondary/20 active:scale-[0.99] transition-all"
                 >
@@ -379,35 +437,12 @@ export function Checkout() {
                 </button>
               )}
             </div>
-
-            {/* Sender account */}
-            <div>
-              <label className="block text-sm font-semibold text-foreground mb-2">
-                Sender Account Number
-              </label>
-              <input
-                type="text"
-                value={state.senderAccount}
-                onChange={(e) => updateState({ senderAccount: e.target.value })}
-                placeholder="Account you sent from"
-                className="w-full bg-card border border-border rounded-2xl px-4 py-4 focus:outline-none focus:ring-2 focus:ring-primary/30 text-base font-medium shadow-sm"
-              />
-            </div>
-
-            {/* Warning */}
-            <div className="flex items-start gap-3 bg-secondary/15 border border-secondary/30 rounded-2xl px-4 py-3.5">
-              <AlertCircle className="w-4 h-4 text-yellow-600 shrink-0 mt-0.5" />
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                After transferring the money, upload your payment receipt or transaction screenshot.
-              </p>
-            </div>
           </div>
         )}
 
-        {/* ── STEP 3: SUMMARY ── */}
+        {/* ── STEP 3: REVIEW & CONFIRM ── */}
         {step === 3 && (
           <div className="flex flex-col gap-5">
-            {/* Summary table */}
             <div className="bg-card border border-border rounded-[1.5rem] shadow-sm overflow-hidden">
               <div className="px-5 pt-4 pb-1">
                 <p className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-[0.15em]">
@@ -415,17 +450,19 @@ export function Checkout() {
                 </p>
               </div>
               <div className="divide-y divide-border">
-                <SummaryRow label="Lottery" value={campaign.title} />
-                <SummaryRow label="Tickets" value={`${state.quantity} × ${price.toLocaleString()} Birr`} />
+                <SummaryRow label="Lottery" value={campaign.vehicleModel} />
+                <SummaryRow label="Tickets" value={`${quantity} × ${price.toLocaleString()} Birr`} />
+                
+                {/* Lucky Numbers per Ticket */}
                 <div className="px-5 py-3.5 flex flex-col gap-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground font-medium">Your Lucky Numbers</span>
-                    <span className="text-xs font-bold text-primary">{state.quantity} Ticket{state.quantity > 1 ? "s" : ""}</span>
+                    <span className="text-xs font-bold text-primary">{quantity} Ticket{quantity > 1 ? "s" : ""}</span>
                   </div>
-                  {state.quantity > 1 ? (
+                  {quantity > 1 ? (
                     <div className="flex flex-col gap-2 pt-1">
-                      {Array.from({ length: state.quantity }).map((_, tIdx) => {
-                        const ticketNums = state.luckyNumbers.slice(tIdx * 6, (tIdx + 1) * 6);
+                      {Array.from({ length: quantity }).map((_, tIdx) => {
+                        const ticketNums = luckyNumbers.slice(tIdx * 6, (tIdx + 1) * 6);
                         return (
                           <div key={tIdx} className="flex items-center justify-between bg-muted/40 rounded-xl px-3 py-1.5 border border-border/50">
                             <span className="text-xs font-bold text-foreground">Ticket #{tIdx + 1}:</span>
@@ -442,7 +479,7 @@ export function Checkout() {
                     </div>
                   ) : (
                     <div className="flex flex-wrap gap-1 justify-end">
-                      {state.luckyNumbers.map((n) => (
+                      {luckyNumbers.map((n) => (
                         <span key={n} className="bg-secondary text-foreground text-[11px] font-bold px-2 py-0.5 rounded-full">
                           #{n}
                         </span>
@@ -450,14 +487,16 @@ export function Checkout() {
                     </div>
                   )}
                 </div>
+
                 <SummaryRow label="Name" value={state.buyerName} />
                 <SummaryRow label="Phone" value={authPhone || state.buyerPhone} />
                 <SummaryRow
-                  label="Bank"
-                  value={state.paymentMethod === "cbe" ? "Commercial Bank of Ethiopia" : "Telebirr"}
+                  label="Payment Method"
+                  value={state.paymentMethod === "cbe" ? "Commercial Bank of Ethiopia (CBE)" : "Telebirr"}
                 />
               </div>
-              {/* Total row — highlighted */}
+
+              {/* Total row */}
               <div className="px-5 py-4 bg-primary/5 border-t border-primary/20 flex items-center justify-between">
                 <span className="font-extrabold text-base text-foreground">Total</span>
                 <span className="font-extrabold text-lg text-primary">{totalPrice.toLocaleString()} Birr</span>
@@ -482,6 +521,7 @@ export function Checkout() {
           {submitError}
         </div>
       )}
+
       {/* Footer */}
       <div className="p-4 flex gap-3">
         <button

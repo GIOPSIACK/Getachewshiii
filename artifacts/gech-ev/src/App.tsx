@@ -26,6 +26,7 @@ function Router() {
         <Route path="/" component={Home} />
         <Route path="/buy" component={BuyTicket} />
         <Route path="/buy/:campaignId" component={BuyTicket} />
+        <Route path="/checkout" component={Checkout} />
         <Route path="/checkout/:campaignId" component={Checkout} />
         <Route path="/success" component={Success} />
         <Route path="/tickets" component={MyTickets} />
