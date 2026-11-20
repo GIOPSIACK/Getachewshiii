@@ -1,14 +1,15 @@
 import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
-import { useGetCampaign } from "@workspace/api-client-react";
+import { useListCampaigns, useGetCampaign } from "@workspace/api-client-react";
 import { useCheckout } from "@/contexts/CheckoutContext";
-import { Minus, Plus, RefreshCw, ChevronLeft, ArrowRight, Check, Sparkles } from "lucide-react";
+import { Minus, Plus, RefreshCw, ChevronLeft, ArrowRight, Check, Sparkles, Ticket } from "lucide-react";
 import { cn } from "@/lib/utils";
 import glogoSrc from "@/assets/glogo.jpg";
 import numbersPatternBg from "@/assets/green-pattern-numbers-bg.jfif";
 import bydImage from "@/assets/byd-yuan-up.jpg";
 import bydYuanPlusImage from "@/assets/byd-yuan-plus.webp";
 import sinotrukHowoImage from "@/assets/sinotruk-howo-371.jpg";
+import activeLotteriesIcon from "@/assets/icons/active-lotteries.svg";
 
 const MODEL_PRICES: Record<string, number> = {
   "BYD Yuan Plus": 3000,
@@ -31,13 +32,37 @@ export function BuyTicket() {
   const [, params] = useRoute("/buy/:campaignId");
   const [, setLocation] = useLocation();
   const { state, updateState } = useCheckout();
-  
-  const campaignId = Number(params?.campaignId || state.campaignId || 1);
-  const { data: campaign, isLoading } = useGetCampaign(campaignId, {
-    query: { enabled: !!campaignId } as any,
+
+  // Fetch list of all active campaigns
+  const { data: allCampaigns, isLoading: campaignsLoading } = useListCampaigns();
+  const activeCampaigns = (allCampaigns ?? []).filter((c) => c.status === "active" || !c.status);
+
+  // Selected campaign state (pre-select from route param, context, or first active)
+  const [selectedId, setSelectedId] = useState<number | null>(() => {
+    if (params?.campaignId) return Number(params.campaignId);
+    if (state.campaignId) return Number(state.campaignId);
+    return null;
   });
 
-  const [subStep, setSubStep] = useState<"quantity" | "numbers">("quantity");
+  // Keep selectedId in sync with activeCampaigns once loaded
+  useEffect(() => {
+    if (selectedId == null && activeCampaigns.length > 0) {
+      setSelectedId(activeCampaigns[0].id);
+    }
+  }, [activeCampaigns, selectedId]);
+
+  // Fallback single campaign query if list hasn't loaded
+  const campaignId = selectedId || Number(params?.campaignId || state.campaignId || 1);
+  const { data: singleCampaign } = useGetCampaign(campaignId, {
+    query: { enabled: !!campaignId && activeCampaigns.length === 0 } as any,
+  });
+
+  // The active chosen campaign
+  const campaign = activeCampaigns.find((c) => c.id === campaignId) ?? singleCampaign ?? activeCampaigns[0];
+
+  // 3 distinct sequential sub-steps:
+  // "car" -> "quantity" -> "numbers"
+  const [subStep, setSubStep] = useState<"car" | "quantity" | "numbers">("car");
   const [quantity, setQuantity] = useState(state.quantity || 1);
   const [luckyNumbers, setLuckyNumbers] = useState<number[]>(state.luckyNumbers || []);
 
@@ -46,14 +71,16 @@ export function BuyTicket() {
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   }, [subStep]);
 
-  // Update context when state changes
+  // Sync state to CheckoutContext
   useEffect(() => {
-    updateState({ campaignId, quantity, luckyNumbers });
-  }, [quantity, luckyNumbers, campaignId]);
+    if (campaign?.id) {
+      updateState({ campaignId: campaign.id, quantity, luckyNumbers });
+    }
+  }, [quantity, luckyNumbers, campaign?.id]);
 
   const toggleNumber = (num: number) => {
     if (luckyNumbers.includes(num)) {
-      setLuckyNumbers(luckyNumbers.filter(n => n !== num));
+      setLuckyNumbers(luckyNumbers.filter((n) => n !== num));
     } else if (luckyNumbers.length < 6) {
       setLuckyNumbers([...luckyNumbers, num].sort((a, b) => a - b));
     }
@@ -67,20 +94,20 @@ export function BuyTicket() {
     setLuckyNumbers(Array.from(numbers).sort((a, b) => a - b));
   };
 
-  if (isLoading || !campaign) {
+  if (campaignsLoading && !campaign) {
     return (
-      <div className="flex-1 flex items-center justify-center p-6">
+      <div className="flex-1 flex items-center justify-center p-6 min-h-[60vh]">
         <div className="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
       </div>
     );
   }
 
-  const price = MODEL_PRICES[campaign.vehicleModel] ?? campaign.ticketPrice;
+  const price = campaign ? (MODEL_PRICES[campaign.vehicleModel] ?? campaign.ticketPrice) : 3000;
   const totalPrice = quantity * price;
   const isComplete = luckyNumbers.length === 6;
 
   return (
-    <div className="flex flex-col flex-1 pb-safe animate-in fade-in slide-in-from-right-4 duration-300">
+    <div className="flex flex-col flex-1 pb-safe animate-in fade-in duration-200">
       {/* Top Header */}
       <div className="px-4 py-3 flex flex-col gap-3">
         <div className="flex items-center gap-2.5">
@@ -91,57 +118,204 @@ export function BuyTicket() {
         </div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button 
+            <button
               onClick={() => {
                 if (subStep === "numbers") {
                   setSubStep("quantity");
+                } else if (subStep === "quantity") {
+                  setSubStep("car");
                 } else {
                   setLocation("/");
                 }
               }}
-              className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center text-foreground shadow-sm shrink-0"
+              className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center text-foreground shadow-sm shrink-0 hover:bg-muted transition-colors"
               aria-label="Back"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
             <div>
               <h1 className="text-xl font-bold" style={{ fontFamily: "'Highstories', sans-serif", letterSpacing: "0.05em" }}>
-                {subStep === "quantity" ? "Step 1: Choose Quantity" : "Step 2: Pick Lucky Numbers"}
+                {subStep === "car" && "Step 1: Choose Vehicle"}
+                {subStep === "quantity" && "Step 2: Choose Quantity"}
+                {subStep === "numbers" && "Step 3: Pick Lucky Numbers"}
               </h1>
               <p className="text-xs text-muted-foreground">
-                {subStep === "quantity" ? "Select how many entries you want" : "Select 6 unique lucky numbers"}
+                {subStep === "car" && "Select which active lottery car you want"}
+                {subStep === "quantity" && "Select how many entries you want"}
+                {subStep === "numbers" && "Select 6 unique lucky numbers"}
               </p>
             </div>
           </div>
-          <span className="text-xs font-bold bg-primary/10 text-primary px-3 py-1 rounded-full">
-            {subStep === "quantity" ? "1/2" : "2/2"}
+          <span className="text-xs font-bold bg-primary/10 text-primary px-3 py-1 rounded-full shrink-0">
+            {subStep === "car" && "1/3"}
+            {subStep === "quantity" && "2/3"}
+            {subStep === "numbers" && "3/3"}
           </span>
         </div>
       </div>
 
-      {/* Selected Vehicle Card Badge */}
-      <div className="px-4 mb-4">
-        <div className="bg-card border border-border/80 rounded-2xl p-3 flex items-center gap-3 shadow-sm">
-          <div className="w-14 h-14 rounded-xl bg-muted overflow-hidden shrink-0">
-            <img
-              src={getVehicleImage(campaign)}
-              alt={campaign.vehicleModel}
-              className="w-full h-full object-cover"
-            />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-extrabold text-foreground text-sm truncate">{campaign.vehicleModel}</p>
-            <p className="text-xs text-primary font-bold">{price.toLocaleString()} Birr / ticket</p>
-            <p className="text-[11px] text-muted-foreground">{campaign.title}</p>
+      {/* Selected Vehicle Badge (Shown on Step 2 and Step 3) */}
+      {subStep !== "car" && campaign && (
+        <div className="px-4 mb-4">
+          <div className="bg-card border border-border/80 rounded-2xl p-3 flex items-center justify-between shadow-sm">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-12 h-12 rounded-xl bg-muted overflow-hidden shrink-0">
+                <img
+                  src={getVehicleImage(campaign)}
+                  alt={campaign.vehicleModel}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="min-w-0">
+                <p className="font-extrabold text-foreground text-sm truncate">{campaign.vehicleModel}</p>
+                <p className="text-xs text-primary font-bold">{price.toLocaleString()} Birr / ticket</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setSubStep("car")}
+              className="text-xs text-primary font-bold bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-xl transition-colors shrink-0"
+            >
+              Change Car
+            </button>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* ================= STEP 1: QUANTITY SELECTION (APPEARS SOLELY) ================= */}
-      {subStep === "quantity" && (
+      {/* ================= STEP 1: CHOOSE VEHICLE / ACTIVE LOTTERY ================= */}
+      {subStep === "car" && (
+        <div className="px-4 flex-1 flex flex-col gap-4 animate-in fade-in duration-200">
+          <div className="flex items-center gap-2 mb-1">
+            <img src={activeLotteriesIcon} alt="" aria-hidden="true" className="h-10 w-10 shrink-0" />
+            <div>
+              <h2
+                style={{ fontFamily: "'Highstories', sans-serif", fontSize: "28px", letterSpacing: "0.05em" }}
+                className="font-extrabold leading-none"
+              >
+                Active Lotteries
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Select a car below to participate in its draw
+              </p>
+            </div>
+          </div>
+
+          {activeCampaigns.length === 0 && !campaign ? (
+            <div className="bg-card border border-dashed border-border/60 rounded-2xl p-8 flex flex-col items-center text-center">
+              <Ticket className="w-8 h-8 text-muted-foreground mb-2" />
+              <p className="font-bold text-sm">No active lotteries available</p>
+              <p className="text-xs text-muted-foreground mt-1">Please check back later.</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {(activeCampaigns.length > 0 ? activeCampaigns : [campaign]).map((c) => {
+                const isSelected = c.id === campaignId;
+                const cPrice = MODEL_PRICES[c.vehicleModel] ?? c.ticketPrice;
+                const pct = Math.round((c.soldSlots / c.totalSlots) * 100);
+
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedId(c.id);
+                    }}
+                    aria-pressed={isSelected}
+                    className={cn(
+                      "text-left bg-card border rounded-2xl p-4 flex items-center gap-3 shadow-sm transition-all duration-200",
+                      isSelected
+                        ? "border-primary ring-2 ring-primary/40 -translate-y-0.5 shadow-md bg-primary/[0.03]"
+                        : "border-border/60 hover:shadow-md hover:-translate-y-0.5"
+                    )}
+                  >
+                    <div className="w-16 h-16 rounded-xl bg-muted overflow-hidden shrink-0">
+                      <img
+                        src={getVehicleImage(c)}
+                        alt={c.vehicleModel}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p
+                        style={{ fontFamily: "'Highstories', sans-serif", fontSize: "26px", letterSpacing: "0.05em" }}
+                        className="font-bold truncate text-foreground leading-tight"
+                      >
+                        {c.vehicleModel}
+                      </p>
+                      <p className="text-xs text-primary font-bold mt-0.5">
+                        {cPrice.toLocaleString()} Birr / ticket
+                      </p>
+                      <div className="mt-2 h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary rounded-full"
+                          style={{ width: `${Math.min(100, pct)}%` }}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-extrabold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                          LIVE
+                        </span>
+                        {isSelected && (
+                          <span className="text-[10px] font-bold text-white bg-primary px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
+                            <Check className="w-3 h-3 text-white stroke-[3]" /> Selected
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-muted-foreground font-medium">
+                        {c.soldSlots}/{c.totalSlots}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Sticky Next Button for Step 1 */}
+          <div className="sticky bottom-0 left-0 right-0 bg-background/95 backdrop-blur-md border-t border-border p-4 pb-8 mt-auto shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-[11px] font-medium text-muted-foreground">Selected Car</p>
+                <p className="text-base font-extrabold text-foreground truncate max-w-[200px]">
+                  {campaign?.vehicleModel ?? "Select a car"}
+                </p>
+              </div>
+              <span className="text-lg font-black text-primary">
+                {price.toLocaleString()} <span className="text-xs">Birr</span>
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                if (campaign) {
+                  setSubStep("quantity");
+                }
+              }}
+              disabled={!campaign}
+              className="w-full py-4 text-black rounded-2xl font-bold hover:brightness-105 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+              style={{
+                backgroundColor: "#7BC143",
+                boxShadow: "inset 0 0 0 3px #000000",
+                fontFamily: "'Highstories', sans-serif",
+                fontSize: "26px",
+                letterSpacing: "0.05em",
+              }}
+            >
+              Next: Choose Quantity
+              <ArrowRight className="w-5 h-5 text-black" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ================= STEP 2: QUANTITY SELECTION (APPEARS SOLELY) ================= */}
+      {subStep === "quantity" && campaign && (
         <div className="px-4 flex-1 flex flex-col gap-6 animate-in fade-in duration-200">
           <div className="bg-card rounded-[1.75rem] p-6 shadow-sm border border-border">
-            <h2 className="font-bold mb-2 text-center" style={{ fontFamily: "'Highstories', sans-serif", letterSpacing: "0.05em", fontSize: "2.2rem" }}>
+            <h2
+              className="font-bold mb-2 text-center"
+              style={{ fontFamily: "'Highstories', sans-serif", letterSpacing: "0.05em", fontSize: "2.2rem" }}
+            >
               How Many Tickets?
             </h2>
             <p className="text-xs text-muted-foreground text-center mb-6">
@@ -150,7 +324,7 @@ export function BuyTicket() {
 
             {/* Stepper display */}
             <div className="flex items-center justify-between bg-muted/30 border border-border/60 rounded-2xl p-4 mb-6">
-              <button 
+              <button
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
                 disabled={quantity <= 1}
                 className="w-12 h-12 rounded-xl bg-card border border-border shadow-sm flex items-center justify-center disabled:opacity-40 disabled:shadow-none hover:bg-muted active:scale-95 transition-all"
@@ -158,7 +332,7 @@ export function BuyTicket() {
               >
                 <Minus className="w-5 h-5 text-foreground" />
               </button>
-              
+
               <div className="flex flex-col items-center">
                 <span className="text-4xl font-extrabold text-foreground leading-none tabular-nums">
                   {quantity}
@@ -168,7 +342,7 @@ export function BuyTicket() {
                 </span>
               </div>
 
-              <button 
+              <button
                 onClick={() => setQuantity(Math.min(10, quantity + 1))}
                 disabled={quantity >= 10}
                 className="w-12 h-12 rounded-xl bg-card border border-border shadow-sm flex items-center justify-center disabled:opacity-40 disabled:shadow-none hover:bg-muted active:scale-95 transition-all"
@@ -200,11 +374,15 @@ export function BuyTicket() {
             {/* Breakdown stats */}
             <div className="pt-4 border-t border-dashed border-border flex items-center justify-between text-xs">
               <div>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Price per Ticket</p>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  Price per Ticket
+                </p>
                 <p className="text-base font-bold text-foreground">{price.toLocaleString()} Birr</p>
               </div>
               <div className="text-right">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Winning Odds</p>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  Winning Odds
+                </p>
                 <p className="text-base font-extrabold text-primary">
                   1 in {Math.max(1, Math.round(campaign.totalSlots / quantity)).toLocaleString()}
                 </p>
@@ -212,8 +390,8 @@ export function BuyTicket() {
             </div>
           </div>
 
-          {/* Sticky Next Button */}
-          <div className="sticky bottom-0 left-0 right-0 bg-background/90 backdrop-blur-md border-t border-border p-4 pb-8 mt-auto shadow-sm">
+          {/* Sticky Next Button for Step 2 */}
+          <div className="sticky bottom-0 left-0 right-0 bg-background/95 backdrop-blur-md border-t border-border p-4 pb-8 mt-auto shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm font-medium text-muted-foreground">Total Amount</span>
               <span className="text-2xl font-extrabold text-foreground">
@@ -238,8 +416,8 @@ export function BuyTicket() {
         </div>
       )}
 
-      {/* ================= STEP 2: LUCKY NUMBERS SELECTION (APPEARS SOLELY) ================= */}
-      {subStep === "numbers" && (
+      {/* ================= STEP 3: LUCKY NUMBERS SELECTION (APPEARS SOLELY) ================= */}
+      {subStep === "numbers" && campaign && (
         <div className="px-4 flex-1 flex flex-col gap-5 animate-in fade-in duration-200">
           <div
             className="relative overflow-hidden bg-card rounded-[1.75rem] p-5 shadow-sm border border-border flex-1"
@@ -262,7 +440,7 @@ export function BuyTicket() {
                 <p className="text-[11px] text-muted-foreground">Tap numbers below or Quick Pick</p>
               </div>
               <div className="flex flex-col gap-1.5 shrink-0">
-                <button 
+                <button
                   onClick={quickPick}
                   className="flex items-center justify-center gap-1 text-black rounded-full hover:brightness-110 active:scale-[0.97] transition-all px-3 py-1.5 shadow-sm"
                   style={{
@@ -276,7 +454,7 @@ export function BuyTicket() {
                   <Sparkles className="w-3.5 h-3.5" />
                   Quick Pick
                 </button>
-                <button 
+                <button
                   onClick={() => setLuckyNumbers([])}
                   className="flex items-center justify-center gap-1 text-black rounded-full hover:brightness-110 active:scale-[0.97] transition-all px-3 py-1.5 shadow-sm"
                   style={{
@@ -300,12 +478,12 @@ export function BuyTicket() {
               </p>
               <div className="flex justify-center gap-2">
                 {[0, 1, 2, 3, 4, 5].map((i) => (
-                  <div 
-                    key={i} 
+                  <div
+                    key={i}
                     className={cn(
                       "rounded-full flex items-center justify-center text-xs font-black border-2 transition-all px-1",
-                      luckyNumbers[i] 
-                        ? "bg-[#7BC143] border-black text-black shadow-sm scale-105" 
+                      luckyNumbers[i]
+                        ? "bg-[#7BC143] border-black text-black shadow-sm scale-105"
                         : "bg-muted/60 border-dashed border-border text-muted-foreground"
                     )}
                     style={{ minWidth: "36px", height: "36px" }}
@@ -333,8 +511,8 @@ export function BuyTicket() {
                       disabled={isDisabled}
                       className={cn(
                         "aspect-square rounded-full flex items-center justify-center text-xs font-bold transition-all shadow-sm",
-                        isSelected 
-                          ? "ring-4 ring-[#7BC143] bg-[#7BC143] text-black font-extrabold scale-105" 
+                        isSelected
+                          ? "ring-4 ring-[#7BC143] bg-[#7BC143] text-black font-extrabold scale-105"
                           : "hover:bg-black/80 active:scale-95 bg-black text-white"
                       )}
                       style={{ opacity: isDisabled ? 0.35 : 1 }}
@@ -347,8 +525,8 @@ export function BuyTicket() {
             </div>
           </div>
 
-          {/* Sticky Checkout Button */}
-          <div className="sticky bottom-0 left-0 right-0 bg-background/90 backdrop-blur-md border-t border-border p-4 pb-8 mt-auto shadow-sm">
+          {/* Sticky Checkout Button for Step 3 */}
+          <div className="sticky bottom-0 left-0 right-0 bg-background/95 backdrop-blur-md border-t border-border p-4 pb-8 mt-auto shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <div className="text-xs text-muted-foreground">
                 {quantity} ticket{quantity > 1 ? "s" : ""} &bull; {campaign.vehicleModel}

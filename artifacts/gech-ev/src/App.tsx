@@ -24,6 +24,7 @@ function Router() {
     <AppLayout>
       <Switch>
         <Route path="/" component={Home} />
+        <Route path="/buy" component={BuyTicket} />
         <Route path="/buy/:campaignId" component={BuyTicket} />
         <Route path="/checkout/:campaignId" component={Checkout} />
         <Route path="/success" component={Success} />
