@@ -62817,6 +62817,32 @@ async function getTakenNumbersForCampaign(campaignId, paymentDetails) {
   }
   return Array.from(takenSet).sort((a2, b2) => a2 - b2);
 }
+async function getParticipantsCountForCampaign(campaignId, paymentDetails) {
+  const pDetails = typeof paymentDetails === "string" ? JSON.parse(paymentDetails || "{}") : paymentDetails || {};
+  const rawInit = pDetails?.initialParticipants;
+  const initialParticipants = typeof rawInit === "number" ? rawInit : parseInt(String(rawInit ?? ""), 10);
+  let distinctRealBuyers = 0;
+  try {
+    const tickets = await db.select({ buyerPhone: ticketsTable.buyerPhone, buyerName: ticketsTable.buyerName }).from(ticketsTable).where(
+      and(
+        eq(ticketsTable.campaignId, campaignId),
+        ne(ticketsTable.status, "rejected")
+      )
+    );
+    const buyerKeys = /* @__PURE__ */ new Set();
+    for (const t2 of tickets) {
+      const key = (t2.buyerPhone || t2.buyerName || "").trim();
+      if (key) buyerKeys.add(key);
+    }
+    distinctRealBuyers = buyerKeys.size;
+  } catch (err) {
+    console.error("Error fetching participants count:", err);
+  }
+  if (!Number.isNaN(initialParticipants) && initialParticipants >= 0) {
+    return initialParticipants + distinctRealBuyers;
+  }
+  return distinctRealBuyers;
+}
 router2.get("/campaigns", async (_req, res) => {
   try {
     const campaigns = await db.select().from(campaignsTable).orderBy(campaignsTable.createdAt);
@@ -62825,17 +62851,20 @@ router2.get("/campaigns", async (_req, res) => {
         const pDetails = typeof c2.paymentDetails === "string" ? JSON.parse(c2.paymentDetails || "{}") : c2.paymentDetails || {};
         const takenNumbers = await getTakenNumbersForCampaign(c2.id, pDetails);
         const effectiveSold = Math.max(c2.soldSlots, takenNumbers.length);
+        const participantsCount = await getParticipantsCountForCampaign(c2.id, pDetails);
         return {
           ...c2,
           title: c2.title || c2.vehicleModel,
           description: c2.description || `${c2.vehicleModel} Ekub Lottery Draw`,
           ticketPrice: Number(c2.ticketPrice),
           soldSlots: effectiveSold,
+          participantsCount: participantsCount || effectiveSold,
           takenNumbers,
           paymentDetails: {
             telebirrNumber: String(pDetails?.telebirrNumber || "0911223344"),
             cbeAccount: String(pDetails?.cbeAccount || pDetails?.cbeAccountNumber || "100012345678"),
-            accountName: String(pDetails?.accountName || "Gech EV Ekub")
+            accountName: String(pDetails?.accountName || "Gech EV Ekub"),
+            initialParticipants: pDetails?.initialParticipants ?? null
           }
         };
       })
@@ -62881,6 +62910,8 @@ router2.post("/admin/campaigns", requireAdmin, async (req, res) => {
     ticketPrice,
     totalSlots,
     initialSoldTickets,
+    initialParticipants,
+    participants,
     soldTickets,
     drawDate,
     status = "active",
@@ -62910,6 +62941,8 @@ router2.post("/admin/campaigns", requireAdmin, async (req, res) => {
     numSlots,
     Math.max(0, parseInt(String(initialSoldTickets ?? soldTickets ?? 0), 10))
   );
+  const parsedParticipants = parseInt(String(initialParticipants ?? participants ?? ""), 10);
+  const targetParticipants = !Number.isNaN(parsedParticipants) && parsedParticipants >= 0 ? parsedParticipants : targetSold > 0 ? Math.ceil(targetSold / 3.5) : 0;
   const takenSet = /* @__PURE__ */ new Set();
   while (takenSet.size < targetSold) {
     const rand = Math.floor(Math.random() * numSlots) + 1;
@@ -62920,7 +62953,8 @@ router2.post("/admin/campaigns", requireAdmin, async (req, res) => {
     telebirrNumber: String(paymentDetails?.telebirrNumber || ""),
     cbeAccount: String(paymentDetails?.cbeAccount || ""),
     accountName: String(paymentDetails?.accountName || "Gech EV Ekub"),
-    takenNumbers: initialTaken
+    takenNumbers: initialTaken,
+    initialParticipants: targetParticipants
   };
   try {
     const [inserted] = await db.insert(campaignsTable).values({
@@ -62940,11 +62974,13 @@ router2.post("/admin/campaigns", requireAdmin, async (req, res) => {
       ...inserted,
       ticketPrice: Number(inserted.ticketPrice),
       soldSlots: targetSold,
+      participantsCount: targetParticipants,
       takenNumbers: initialTaken,
       paymentDetails: {
         telebirrNumber: pDetails.telebirrNumber,
         cbeAccount: pDetails.cbeAccount,
-        accountName: pDetails.accountName
+        accountName: pDetails.accountName,
+        initialParticipants: targetParticipants
       }
     };
     res.status(201).json(shaped);
@@ -63001,17 +63037,20 @@ router2.get("/campaigns/:id", async (req, res) => {
     const pDetails = typeof campaign.paymentDetails === "string" ? JSON.parse(campaign.paymentDetails || "{}") : campaign.paymentDetails || {};
     const takenNumbers = await getTakenNumbersForCampaign(campaign.id, pDetails);
     const effectiveSold = Math.max(campaign.soldSlots, takenNumbers.length);
+    const participantsCount = await getParticipantsCountForCampaign(campaign.id, pDetails);
     const shaped = {
       ...campaign,
       title: campaign.title || campaign.vehicleModel,
       description: campaign.description || `${campaign.vehicleModel} Ekub Lottery Draw`,
       ticketPrice: Number(campaign.ticketPrice),
       soldSlots: effectiveSold,
+      participantsCount: participantsCount || effectiveSold,
       takenNumbers,
       paymentDetails: {
         telebirrNumber: String(pDetails?.telebirrNumber || "0911223344"),
         cbeAccount: String(pDetails?.cbeAccount || pDetails?.cbeAccountNumber || "100012345678"),
-        accountName: String(pDetails?.accountName || "Gech EV Ekub")
+        accountName: String(pDetails?.accountName || "Gech EV Ekub"),
+        initialParticipants: pDetails?.initialParticipants ?? null
       }
     };
     res.json(shaped);

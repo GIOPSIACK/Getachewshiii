@@ -43,6 +43,46 @@ async function getTakenNumbersForCampaign(campaignId: number, paymentDetails: an
   return Array.from(takenSet).sort((a, b) => a - b);
 }
 
+// Helper: compute total participants for a campaign (admin initial participants + distinct ticket buyers)
+async function getParticipantsCountForCampaign(campaignId: number, paymentDetails: any): Promise<number> {
+  const pDetails = typeof paymentDetails === "string"
+    ? JSON.parse(paymentDetails || "{}")
+    : (paymentDetails || {});
+
+  const rawInit = pDetails?.initialParticipants;
+  const initialParticipants = typeof rawInit === "number"
+    ? rawInit
+    : parseInt(String(rawInit ?? ""), 10);
+
+  let distinctRealBuyers = 0;
+  try {
+    const tickets = await db
+      .select({ buyerPhone: ticketsTable.buyerPhone, buyerName: ticketsTable.buyerName })
+      .from(ticketsTable)
+      .where(
+        and(
+          eq(ticketsTable.campaignId, campaignId),
+          ne(ticketsTable.status, "rejected")
+        )
+      );
+
+    const buyerKeys = new Set<string>();
+    for (const t of tickets) {
+      const key = (t.buyerPhone || t.buyerName || "").trim();
+      if (key) buyerKeys.add(key);
+    }
+    distinctRealBuyers = buyerKeys.size;
+  } catch (err) {
+    console.error("Error fetching participants count:", err);
+  }
+
+  if (!Number.isNaN(initialParticipants) && initialParticipants >= 0) {
+    return initialParticipants + distinctRealBuyers;
+  }
+
+  return distinctRealBuyers;
+}
+
 // GET /campaigns - List all active campaigns
 router.get("/campaigns", async (_req, res): Promise<void> => {
   try {
@@ -59,6 +99,7 @@ router.get("/campaigns", async (_req, res): Promise<void> => {
           
         const takenNumbers = await getTakenNumbersForCampaign(c.id, pDetails);
         const effectiveSold = Math.max(c.soldSlots, takenNumbers.length);
+        const participantsCount = await getParticipantsCountForCampaign(c.id, pDetails);
 
         return {
           ...c,
@@ -66,11 +107,13 @@ router.get("/campaigns", async (_req, res): Promise<void> => {
           description: c.description || `${c.vehicleModel} Ekub Lottery Draw`,
           ticketPrice: Number(c.ticketPrice),
           soldSlots: effectiveSold,
+          participantsCount: participantsCount || effectiveSold,
           takenNumbers,
           paymentDetails: {
             telebirrNumber: String(pDetails?.telebirrNumber || "0911223344"),
             cbeAccount: String(pDetails?.cbeAccount || pDetails?.cbeAccountNumber || "100012345678"),
             accountName: String(pDetails?.accountName || "Gech EV Ekub"),
+            initialParticipants: pDetails?.initialParticipants ?? null,
           },
         };
       })
@@ -128,6 +171,8 @@ router.post("/admin/campaigns", requireAdmin, async (req, res): Promise<void> =>
     ticketPrice,
     totalSlots,
     initialSoldTickets,
+    initialParticipants,
+    participants,
     soldTickets,
     drawDate,
     status = "active",
@@ -165,6 +210,12 @@ router.post("/admin/campaigns", requireAdmin, async (req, res): Promise<void> =>
     Math.max(0, parseInt(String(initialSoldTickets ?? soldTickets ?? 0), 10))
   );
 
+  // Distinct participants entered by admin (a participant can buy multiple tickets)
+  const parsedParticipants = parseInt(String(initialParticipants ?? participants ?? ""), 10);
+  const targetParticipants = !Number.isNaN(parsedParticipants) && parsedParticipants >= 0
+    ? parsedParticipants
+    : (targetSold > 0 ? Math.ceil(targetSold / 3.5) : 0);
+
   const takenSet = new Set<number>();
   while (takenSet.size < targetSold) {
     const rand = Math.floor(Math.random() * numSlots) + 1;
@@ -177,6 +228,7 @@ router.post("/admin/campaigns", requireAdmin, async (req, res): Promise<void> =>
     cbeAccount: String(paymentDetails?.cbeAccount || ""),
     accountName: String(paymentDetails?.accountName || "Gech EV Ekub"),
     takenNumbers: initialTaken,
+    initialParticipants: targetParticipants,
   };
 
   try {
@@ -201,11 +253,13 @@ router.post("/admin/campaigns", requireAdmin, async (req, res): Promise<void> =>
       ...inserted,
       ticketPrice: Number(inserted.ticketPrice),
       soldSlots: targetSold,
+      participantsCount: targetParticipants,
       takenNumbers: initialTaken,
       paymentDetails: {
         telebirrNumber: pDetails.telebirrNumber,
         cbeAccount: pDetails.cbeAccount,
         accountName: pDetails.accountName,
+        initialParticipants: targetParticipants,
       },
     };
 
@@ -286,6 +340,7 @@ router.get("/campaigns/:id", async (req, res): Promise<void> => {
 
     const takenNumbers = await getTakenNumbersForCampaign(campaign.id, pDetails);
     const effectiveSold = Math.max(campaign.soldSlots, takenNumbers.length);
+    const participantsCount = await getParticipantsCountForCampaign(campaign.id, pDetails);
 
     const shaped = {
       ...campaign,
@@ -293,11 +348,13 @@ router.get("/campaigns/:id", async (req, res): Promise<void> => {
       description: campaign.description || `${campaign.vehicleModel} Ekub Lottery Draw`,
       ticketPrice: Number(campaign.ticketPrice),
       soldSlots: effectiveSold,
+      participantsCount: participantsCount || effectiveSold,
       takenNumbers,
       paymentDetails: {
         telebirrNumber: String(pDetails?.telebirrNumber || "0911223344"),
         cbeAccount: String(pDetails?.cbeAccount || pDetails?.cbeAccountNumber || "100012345678"),
         accountName: String(pDetails?.accountName || "Gech EV Ekub"),
+        initialParticipants: pDetails?.initialParticipants ?? null,
       },
     };
 

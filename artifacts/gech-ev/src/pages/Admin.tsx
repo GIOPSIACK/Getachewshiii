@@ -114,6 +114,7 @@ interface CampaignFormState {
   ticketPrice: string;
   totalSlots: string;
   initialSoldTickets: string;
+  initialParticipants: string;
   drawDate: string;
   imageUrl: string;
   telebirrNumber: string;
@@ -137,6 +138,7 @@ export function AdminPanel() {
     ticketPrice: "3000",
     totalSlots: "1000",
     initialSoldTickets: "0",
+    initialParticipants: "0",
     drawDate: "",
     imageUrl: "",
     telebirrNumber: "0911223344",
@@ -275,6 +277,7 @@ export function AdminPanel() {
           ticketPrice: parseFloat(newCampaign.ticketPrice) || 3000,
           totalSlots: parseInt(newCampaign.totalSlots) || 1000,
           initialSoldTickets: parseInt(newCampaign.initialSoldTickets) || 0,
+          initialParticipants: parseInt(newCampaign.initialParticipants) || 0,
           drawDate: new Date(newCampaign.drawDate).toISOString(),
           imageUrl: newCampaign.imageUrl.trim() || null,
           status: "active",
@@ -298,6 +301,7 @@ export function AdminPanel() {
         ticketPrice: "3000",
         totalSlots: "1000",
         initialSoldTickets: "0",
+        initialParticipants: "0",
         drawDate: "",
         imageUrl: "",
         telebirrNumber: "0911223344",
@@ -791,7 +795,7 @@ export function AdminPanel() {
                   />
                 </div>
 
-                {/* Pre-sold Tickets / Participants */}
+                {/* Pre-sold Tickets */}
                 <div>
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 flex items-center justify-between">
                     <span>Already Sold Tickets</span>
@@ -807,7 +811,26 @@ export function AdminPanel() {
                     className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
                   />
                   <p className="text-[11px] text-muted-foreground mt-1">
-                    System picks this many random numbers and marks them as unavailable.
+                    Number of tickets/slots already sold (system locks this exact amount of random numbers).
+                  </p>
+                </div>
+
+                {/* Number of Participants */}
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 flex items-center justify-between">
+                    <span>Total Participants</span>
+                    <span className="text-[10px] text-primary font-bold">Distinct People</span>
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={newCampaign.initialParticipants}
+                    onChange={e => setNewCampaign({ ...newCampaign, initialParticipants: e.target.value })}
+                    placeholder="0"
+                    className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Number of unique participants/buyers (a single participant can buy multiple tickets).
                   </p>
                 </div>
 
@@ -999,9 +1022,9 @@ export function AdminPanel() {
                           {Number(c.ticketPrice).toLocaleString()} Birr
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="font-semibold text-foreground">{c.soldSlots} / {c.totalSlots}</div>
+                          <div className="font-semibold text-foreground">{c.soldSlots} / {c.totalSlots} slots</div>
                           <div className="text-[10px] text-muted-foreground">
-                            {Math.round((c.soldSlots / c.totalSlots) * 100)}% filled
+                            {c.participantsCount ?? c.soldSlots} participants &bull; {Math.round((c.soldSlots / c.totalSlots) * 100)}% filled
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">

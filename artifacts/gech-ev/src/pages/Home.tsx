@@ -338,7 +338,9 @@ export function Home() {
                         <p className="text-[9px] font-bold text-black uppercase tracking-wider leading-none mb-0.5">
                           Participants
                         </p>
-                        <p className="text-xl font-extrabold leading-none text-black">{campaign.soldSlots}</p>
+                        <p className="text-xl font-extrabold leading-none text-black">
+                          {(campaign as any).participantsCount ?? campaign.soldSlots}
+                        </p>
                       </div>
                       <img
                         src={participantsIcon}
