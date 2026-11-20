@@ -62789,14 +62789,87 @@ function requireAdmin(req, res, next) {
 
 // src/routes/campaigns.ts
 var router2 = (0, import_express2.Router)();
+async function getTakenNumbersForCampaign(campaignId, paymentDetails) {
+  const pDetails = typeof paymentDetails === "string" ? JSON.parse(paymentDetails || "{}") : paymentDetails || {};
+  const initialTaken = Array.isArray(pDetails?.takenNumbers) ? pDetails.takenNumbers : [];
+  const takenSet = new Set(initialTaken);
+  try {
+    const tickets = await db.select({ luckyNumbers: ticketsTable.luckyNumbers }).from(ticketsTable).where(
+      and(
+        eq(ticketsTable.campaignId, campaignId),
+        ne(ticketsTable.status, "rejected")
+      )
+    );
+    for (const t2 of tickets) {
+      try {
+        const parsed = JSON.parse(t2.luckyNumbers);
+        if (Array.isArray(parsed)) {
+          for (const n2 of parsed) {
+            const num = Number(n2);
+            if (!Number.isNaN(num) && num > 0) takenSet.add(num);
+          }
+        }
+      } catch {
+      }
+    }
+  } catch (err) {
+    console.error("Error fetching taken numbers for campaign:", err);
+  }
+  return Array.from(takenSet).sort((a2, b2) => a2 - b2);
+}
 router2.get("/campaigns", async (_req, res) => {
-  const campaigns = await db.select().from(campaignsTable).orderBy(campaignsTable.createdAt);
-  const shaped = campaigns.map((c2) => ({
-    ...c2,
-    ticketPrice: Number(c2.ticketPrice),
-    paymentDetails: c2.paymentDetails
-  }));
-  res.json(ListCampaignsResponse.parse(shaped));
+  try {
+    const campaigns = await db.select().from(campaignsTable).orderBy(campaignsTable.createdAt);
+    const shaped = await Promise.all(
+      campaigns.map(async (c2) => {
+        const pDetails = typeof c2.paymentDetails === "string" ? JSON.parse(c2.paymentDetails || "{}") : c2.paymentDetails || {};
+        const takenNumbers = await getTakenNumbersForCampaign(c2.id, pDetails);
+        const effectiveSold = Math.max(c2.soldSlots, takenNumbers.length);
+        return {
+          ...c2,
+          title: c2.title || c2.vehicleModel,
+          description: c2.description || `${c2.vehicleModel} Ekub Lottery Draw`,
+          ticketPrice: Number(c2.ticketPrice),
+          soldSlots: effectiveSold,
+          takenNumbers,
+          paymentDetails: {
+            telebirrNumber: String(pDetails?.telebirrNumber || "0911223344"),
+            cbeAccount: String(pDetails?.cbeAccount || pDetails?.cbeAccountNumber || "100012345678"),
+            accountName: String(pDetails?.accountName || "Gech EV Ekub")
+          }
+        };
+      })
+    );
+    res.json(shaped);
+  } catch (err) {
+    res.status(500).json({ error: err?.message || "Failed to load campaigns" });
+  }
+});
+router2.get("/campaigns/:id/taken-numbers", async (req, res) => {
+  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const id = Number(raw);
+  if (!id || Number.isNaN(id)) {
+    res.status(400).json({ error: "Invalid campaign id" });
+    return;
+  }
+  try {
+    const [campaign] = await db.select().from(campaignsTable).where(eq(campaignsTable.id, id));
+    if (!campaign) {
+      res.status(404).json({ error: "Campaign not found" });
+      return;
+    }
+    const takenNumbers = await getTakenNumbersForCampaign(campaign.id, campaign.paymentDetails);
+    const effectiveSold = Math.max(campaign.soldSlots, takenNumbers.length);
+    res.json({
+      campaignId: campaign.id,
+      totalSlots: campaign.totalSlots,
+      soldSlots: effectiveSold,
+      takenNumbers,
+      availableCount: Math.max(0, campaign.totalSlots - takenNumbers.length)
+    });
+  } catch (err) {
+    res.status(500).json({ error: err?.message || "Failed to fetch taken numbers" });
+  }
 });
 router2.post("/admin/campaigns", requireAdmin, async (req, res) => {
   const {
@@ -62807,12 +62880,14 @@ router2.post("/admin/campaigns", requireAdmin, async (req, res) => {
     vehicleYear,
     ticketPrice,
     totalSlots,
+    initialSoldTickets,
+    soldTickets,
     drawDate,
     status = "active",
     paymentDetails
   } = req.body || {};
-  if (!title || !description || !vehicleModel || !vehicleYear || !ticketPrice || !totalSlots || !drawDate) {
-    res.status(400).json({ error: "Missing required fields: title, description, vehicleModel, vehicleYear, ticketPrice, totalSlots, drawDate" });
+  if (!vehicleModel || !ticketPrice || !totalSlots || !drawDate) {
+    res.status(400).json({ error: "Missing required fields: vehicleModel, ticketPrice, totalSlots, drawDate" });
     return;
   }
   const drawDateParsed = new Date(drawDate);
@@ -62822,7 +62897,7 @@ router2.post("/admin/campaigns", requireAdmin, async (req, res) => {
   }
   const numPrice = Number(ticketPrice);
   const numSlots = parseInt(String(totalSlots), 10);
-  const numYear = parseInt(String(vehicleYear), 10);
+  const numYear = parseInt(String(vehicleYear), 10) || 2025;
   if (Number.isNaN(numPrice) || numPrice <= 0) {
     res.status(400).json({ error: "ticketPrice must be a positive number" });
     return;
@@ -62831,10 +62906,21 @@ router2.post("/admin/campaigns", requireAdmin, async (req, res) => {
     res.status(400).json({ error: "totalSlots must be a positive integer" });
     return;
   }
+  const targetSold = Math.min(
+    numSlots,
+    Math.max(0, parseInt(String(initialSoldTickets ?? soldTickets ?? 0), 10))
+  );
+  const takenSet = /* @__PURE__ */ new Set();
+  while (takenSet.size < targetSold) {
+    const rand = Math.floor(Math.random() * numSlots) + 1;
+    takenSet.add(rand);
+  }
+  const initialTaken = Array.from(takenSet).sort((a2, b2) => a2 - b2);
   const pDetails = {
     telebirrNumber: String(paymentDetails?.telebirrNumber || ""),
     cbeAccount: String(paymentDetails?.cbeAccount || ""),
-    accountName: String(paymentDetails?.accountName || "")
+    accountName: String(paymentDetails?.accountName || "Gech EV Ekub"),
+    takenNumbers: initialTaken
   };
   try {
     const [inserted] = await db.insert(campaignsTable).values({
@@ -62842,10 +62928,10 @@ router2.post("/admin/campaigns", requireAdmin, async (req, res) => {
       description: description ? String(description).trim() : `${String(vehicleModel).trim()} Ekub Lottery Draw`,
       imageUrl: imageUrl ? String(imageUrl).trim() : null,
       vehicleModel: String(vehicleModel).trim(),
-      vehicleYear: numYear || 2025,
+      vehicleYear: numYear,
       ticketPrice: numPrice.toFixed(2),
       totalSlots: numSlots,
-      soldSlots: 0,
+      soldSlots: targetSold,
       drawDate: drawDateParsed,
       status: ["active", "completed", "cancelled"].includes(status) ? status : "active",
       paymentDetails: pDetails
@@ -62853,7 +62939,13 @@ router2.post("/admin/campaigns", requireAdmin, async (req, res) => {
     const shaped = {
       ...inserted,
       ticketPrice: Number(inserted.ticketPrice),
-      paymentDetails: inserted.paymentDetails
+      soldSlots: targetSold,
+      takenNumbers: initialTaken,
+      paymentDetails: {
+        telebirrNumber: pDetails.telebirrNumber,
+        cbeAccount: pDetails.cbeAccount,
+        accountName: pDetails.accountName
+      }
     };
     res.status(201).json(shaped);
   } catch (err) {
@@ -62907,13 +62999,17 @@ router2.get("/campaigns/:id", async (req, res) => {
       return;
     }
     const pDetails = typeof campaign.paymentDetails === "string" ? JSON.parse(campaign.paymentDetails || "{}") : campaign.paymentDetails || {};
+    const takenNumbers = await getTakenNumbersForCampaign(campaign.id, pDetails);
+    const effectiveSold = Math.max(campaign.soldSlots, takenNumbers.length);
     const shaped = {
       ...campaign,
       title: campaign.title || campaign.vehicleModel,
       description: campaign.description || `${campaign.vehicleModel} Ekub Lottery Draw`,
       ticketPrice: Number(campaign.ticketPrice),
+      soldSlots: effectiveSold,
+      takenNumbers,
       paymentDetails: {
-        telebirrNumber: String(pDetails?.telebirrNumber || pDetails?.telebirr || "0911223344"),
+        telebirrNumber: String(pDetails?.telebirrNumber || "0911223344"),
         cbeAccount: String(pDetails?.cbeAccount || pDetails?.cbeAccountNumber || "100012345678"),
         accountName: String(pDetails?.accountName || "Gech EV Ekub")
       }
@@ -63000,13 +63096,14 @@ router3.post("/tickets", async (req, res) => {
     return;
   }
   const ticketNumber = `#${Math.floor(1e3 + Math.random() * 8999)}`;
-  const totalAmount = Number(campaign.ticketPrice) * body.quantity;
+  const finalQuantity = body.luckyNumbers && body.luckyNumbers.length > 0 ? body.luckyNumbers.length : body.quantity;
+  const totalAmount = Number(campaign.ticketPrice) * finalQuantity;
   const [ticket] = await db.insert(ticketsTable).values({
     campaignId: body.campaignId,
     ticketNumber,
     buyerName: body.buyerName,
     buyerPhone: body.buyerPhone,
-    quantity: body.quantity,
+    quantity: finalQuantity,
     luckyNumbers: JSON.stringify(body.luckyNumbers),
     paymentMethod: body.paymentMethod,
     senderAccount: body.senderAccount,
@@ -63014,7 +63111,7 @@ router3.post("/tickets", async (req, res) => {
     status: "pending",
     totalAmount: totalAmount.toFixed(2)
   }).returning();
-  await db.update(campaignsTable).set({ soldSlots: campaign.soldSlots + body.quantity }).where(eq(campaignsTable.id, body.campaignId));
+  await db.update(campaignsTable).set({ soldSlots: campaign.soldSlots + finalQuantity }).where(eq(campaignsTable.id, body.campaignId));
   const shaped = await shapeTicket(ticket);
   res.status(201).json(CreateTicketResponse.parse(shaped));
 });

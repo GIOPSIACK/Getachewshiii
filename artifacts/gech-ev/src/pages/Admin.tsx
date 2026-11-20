@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useAdminListTickets, useUpdateTicketStatus, setAuthTokenGetter, Ticket, AdminListTicketsStatus } from "@workspace/api-client-react";
-import { Check, X, Search, Image as ImageIcon, CheckCircle2, Clock, LogOut, Lock, Trophy, Trash2, Plus, Sparkles, Calendar, Car, AlertCircle, Upload } from "lucide-react";
+import { Check, X, Search, Image as ImageIcon, CheckCircle2, Clock, LogOut, Lock, Trophy, Trash2, Plus, Sparkles, Calendar, Car, AlertCircle, Upload, Download } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -113,6 +113,7 @@ interface CampaignFormState {
   vehicleModel: string;
   ticketPrice: string;
   totalSlots: string;
+  initialSoldTickets: string;
   drawDate: string;
   imageUrl: string;
   telebirrNumber: string;
@@ -135,6 +136,7 @@ export function AdminPanel() {
     vehicleModel: "BYD Yuan Plus",
     ticketPrice: "3000",
     totalSlots: "1000",
+    initialSoldTickets: "0",
     drawDate: "",
     imageUrl: "",
     telebirrNumber: "0911223344",
@@ -183,6 +185,38 @@ export function AdminPanel() {
   const handleAction = async (id: number, newStatus: 'active' | 'rejected') => {
     await updateStatus.mutateAsync({ id, data: { status: newStatus } });
     refetch();
+  };
+
+  const downloadReceipt = async (url: string, ticketNumber: string) => {
+    try {
+      if (url.startsWith("data:")) {
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `receipt-${ticketNumber}.jpg`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        return;
+      }
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = `receipt-${ticketNumber}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `receipt-${ticketNumber}.jpg`;
+      a.target = "_blank";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
   };
 
   const handleLogout = () => {
@@ -240,6 +274,7 @@ export function AdminPanel() {
           vehicleYear: 2025,
           ticketPrice: parseFloat(newCampaign.ticketPrice) || 3000,
           totalSlots: parseInt(newCampaign.totalSlots) || 1000,
+          initialSoldTickets: parseInt(newCampaign.initialSoldTickets) || 0,
           drawDate: new Date(newCampaign.drawDate).toISOString(),
           imageUrl: newCampaign.imageUrl.trim() || null,
           status: "active",
@@ -262,6 +297,7 @@ export function AdminPanel() {
         vehicleModel: "BYD Yuan Plus",
         ticketPrice: "3000",
         totalSlots: "1000",
+        initialSoldTickets: "0",
         drawDate: "",
         imageUrl: "",
         telebirrNumber: "0911223344",
@@ -574,12 +610,29 @@ export function AdminPanel() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             {ticket.receiptImageUrl ? (
-                              <a href={ticket.receiptImageUrl} target="_blank" rel="noreferrer" className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center hover:ring-2 ring-primary/50 transition-all overflow-hidden relative group">
-                                <img src={ticket.receiptImageUrl} className="w-full h-full object-cover" alt="receipt" />
-                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                  <ImageIcon className="w-4 h-4 text-white" />
-                                </div>
-                              </a>
+                              <div className="flex items-center gap-2">
+                                <a
+                                  href={ticket.receiptImageUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center hover:ring-2 ring-primary/50 transition-all overflow-hidden relative group shrink-0"
+                                  title="View full receipt"
+                                >
+                                  <img src={ticket.receiptImageUrl} className="w-full h-full object-cover" alt="receipt" />
+                                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                    <ImageIcon className="w-4 h-4 text-white" />
+                                  </div>
+                                </a>
+                                <button
+                                  type="button"
+                                  onClick={() => downloadReceipt(ticket.receiptImageUrl!, ticket.ticketNumber)}
+                                  className="h-8 px-2.5 rounded-lg bg-primary/10 hover:bg-primary text-primary hover:text-white flex items-center gap-1.5 text-xs font-bold transition-all shadow-sm active:scale-95"
+                                  title="Download receipt screenshot"
+                                >
+                                  <Download className="w-3.5 h-3.5" />
+                                  <span>Download</span>
+                                </button>
+                              </div>
                             ) : (
                               <span className="text-xs text-muted-foreground italic">None</span>
                             )}
@@ -736,6 +789,26 @@ export function AdminPanel() {
                     placeholder="1000"
                     className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
                   />
+                </div>
+
+                {/* Pre-sold Tickets / Participants */}
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 flex items-center justify-between">
+                    <span>Already Sold Tickets</span>
+                    <span className="text-[10px] text-primary font-bold">Auto-Locks Slots</span>
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={parseInt(newCampaign.totalSlots) || 1000}
+                    value={newCampaign.initialSoldTickets}
+                    onChange={e => setNewCampaign({ ...newCampaign, initialSoldTickets: e.target.value })}
+                    placeholder="0"
+                    className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    System picks this many random numbers and marks them as unavailable.
+                  </p>
                 </div>
 
                 {/* Draw Date & Time */}

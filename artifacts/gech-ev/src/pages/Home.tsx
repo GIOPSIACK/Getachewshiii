@@ -48,34 +48,39 @@ function getSellingEnd(): number {
   return end;
 }
 
-function getSellingRemaining(end: number) {
-  const total = end - Date.now();
-  if (total <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0, expired: true };
-  return {
-    days: Math.floor(total / (1000 * 60 * 60 * 24)),
-    hours: Math.floor((total / (1000 * 60 * 60)) % 24),
-    minutes: Math.floor((total / (1000 * 60)) % 60),
-    seconds: Math.floor((total / 1000) % 60),
-    expired: false,
-  };
-}
+function calculateCountdown(drawDate?: string | Date | null, fallbackEnd?: number) {
+  let targetMs: number;
+  if (drawDate) {
+    targetMs = new Date(drawDate).getTime();
+    if (isNaN(targetMs) || targetMs <= 0) {
+      targetMs = fallbackEnd || (Date.now() + 15 * 24 * 60 * 60 * 1000);
+    }
+  } else {
+    targetMs = fallbackEnd || (Date.now() + 15 * 24 * 60 * 60 * 1000);
+  }
 
-function getTimeRemaining(drawDate: string) {
-  const total = new Date(drawDate).getTime() - Date.now();
-  if (total <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+  const diff = targetMs - Date.now();
+  if (diff <= 0) {
+    return { days: 0, hours: 0, minutes: 0, seconds: 0, expired: true };
+  }
+
   return {
-    days: Math.floor(total / (1000 * 60 * 60 * 24)),
-    hours: Math.floor((total / (1000 * 60 * 60)) % 24),
-    minutes: Math.floor((total / (1000 * 60)) % 60),
-    seconds: Math.floor((total / 1000) % 60),
+    days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+    hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
+    minutes: Math.floor((diff / (1000 * 60)) % 60),
+    seconds: Math.floor((diff / 1000) % 60),
+    expired: false,
   };
 }
 
 function CountdownBlock({ value, label }: { value: number; label: string }) {
   return (
     <div className="flex flex-col items-center gap-1">
-      <div className="bg-white/20 backdrop-blur-sm border border-white/20 rounded-xl px-3 py-2 min-w-[46px] text-center shadow-inner">
-        <span className="text-[22px] font-extrabold text-white leading-none tabular-nums tracking-tight">
+      <div className="bg-white/20 backdrop-blur-sm border border-white/20 rounded-xl px-3 py-2 min-w-[46px] text-center shadow-inner relative overflow-hidden">
+        <span
+          key={value}
+          className="text-[22px] font-extrabold text-white leading-none tabular-nums tracking-tight block animate-in fade-in duration-300"
+        >
           {String(value).padStart(2, "0")}
         </span>
       </div>
@@ -97,7 +102,7 @@ export function Home() {
   const [activeFilter, setActiveFilter] = useState("all");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [sellingEnd] = useState<number>(() => getSellingEnd());
-  const [countdown, setCountdown] = useState(() => getSellingRemaining(sellingEnd));
+  const [countdown, setCountdown] = useState(() => calculateCountdown(null, sellingEnd));
   const [heroVisible, setHeroVisible] = useState(false);
 
   const { setUser } = useAuth();
@@ -114,13 +119,12 @@ export function Home() {
   const campaign = campaigns.find((c) => c.id === selectedId) ?? campaigns[0];
 
   useEffect(() => {
-    if (!campaign?.drawDate) {
-      const update = () => setCountdown(getSellingRemaining(sellingEnd));
-      update();
-      const timer = setInterval(update, 1000);
-      return () => clearInterval(timer);
-    }
-    return;
+    const update = () => {
+      setCountdown(calculateCountdown(campaign?.drawDate, sellingEnd));
+    };
+    update();
+    const timer = setInterval(update, 1000);
+    return () => clearInterval(timer);
   }, [campaign?.drawDate, sellingEnd]);
 
   useEffect(() => {

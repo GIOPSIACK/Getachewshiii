@@ -149,7 +149,8 @@ router.post("/tickets", async (req, res): Promise<void> => {
 
   // Generate a ticket number
   const ticketNumber = `#${Math.floor(1000 + Math.random() * 8999)}`;
-  const totalAmount = Number(campaign.ticketPrice) * body.quantity;
+  const finalQuantity = body.luckyNumbers && body.luckyNumbers.length > 0 ? body.luckyNumbers.length : body.quantity;
+  const totalAmount = Number(campaign.ticketPrice) * finalQuantity;
 
   const [ticket] = await db
     .insert(ticketsTable)
@@ -158,7 +159,7 @@ router.post("/tickets", async (req, res): Promise<void> => {
       ticketNumber,
       buyerName: body.buyerName,
       buyerPhone: body.buyerPhone,
-      quantity: body.quantity,
+      quantity: finalQuantity,
       luckyNumbers: JSON.stringify(body.luckyNumbers),
       paymentMethod: body.paymentMethod,
       senderAccount: body.senderAccount,
@@ -171,7 +172,7 @@ router.post("/tickets", async (req, res): Promise<void> => {
   // Increment sold slots
   await db
     .update(campaignsTable)
-    .set({ soldSlots: campaign.soldSlots + body.quantity })
+    .set({ soldSlots: campaign.soldSlots + finalQuantity })
     .where(eq(campaignsTable.id, body.campaignId));
 
   const shaped = await shapeTicket(ticket);
